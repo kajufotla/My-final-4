@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-X-P-R-T | Enterprise Invoice & Receipt Builder</title>
+    
+    <style>
+        /* ==========================================================================
+           CSS VARIABLES & RESET
+           ========================================================================== */
+        :root {
+            --bg-color: #f3f4f6;
+            --surface-color: #ffffff;
+            --surface-hover: #f9fafb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --primary-color: #1a56db; 
+            --primary-hover: #1e429f;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --transition: all 0.2s ease-in-out;
+            --focus-ring: 0 0 0 3px rgba(26, 86, 219, 0.2);
+            
+            --receipt-theme-color: #1a56db; 
+            --receipt-light-bg: #eff6ff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #111827;
+            --surface-color: #1f2937;
+            --surface-hover: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --shadow-sm: 0 2px 8px rgba(255, 255, 255, 0.04);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-primary); line-height: 1.5; transition: var(--transition); display: flex; flex-direction: column; min-height: 100vh;}
+
+        /* RTL Support */
+        [dir="rtl"] { text-align: right; }
+        [dir="rtl"] .editor-sidebar { border-right: none; border-left: 1px solid var(--border-color); }
+        [dir="rtl"] .sticker-btn { text-align: right; }
+        [dir="rtl"] .action-bar { left: auto; right: 0; }
+        [dir="rtl"] .preview-header-right { text-align: left; }
+        [dir="rtl"] .preview-table th, [dir="rtl"] .preview-table td { text-align: right; }
+        [dir="rtl"] .preview-table th:last-child, [dir="rtl"] .preview-table td:last-child { text-align: left; }
+        [dir="rtl"] .card-notes { border-left: 1px solid #e2e8f0; border-right: 3px solid var(--receipt-theme-color); }
+
+        /* ==========================================================================
+           TOP NAVIGATION & DASHBOARD MATRIX
+           ========================================================================== */
+        .top-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface-color); padding: 12px 24px;
+            border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow-sm); z-index: 50;
+        }
+        .nav-brand { font-weight: 800; font-size: 1.25rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px; letter-spacing: 1px;}
+        .nav-links { display: flex; gap: 20px; align-items: center; }
+        .nav-link { text-decoration: none; color: var(--text-secondary); font-weight: 500; font-size: 0.9rem; transition: var(--transition); cursor: pointer;}
+        .nav-link:hover, .nav-link.active { color: var(--primary-color); }
+        .nav-actions { display: flex; gap: 12px; align-items: center; }
+        
+        .dashboard-matrix {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px 24px;
+            background: var(--surface-color); border-bottom: 1px solid var(--border-color);
+            transition: max-height 0.3s ease, padding 0.3s ease, opacity 0.3s ease;
+            overflow: hidden;
+        }
+        .dashboard-matrix.hidden { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; border-bottom: none; }
+        .stat-card { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .stat-title { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;}
+        .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); }
+
+        /* ==========================================================================
+           LAYOUT & SIDEBAR TABS (Fixed Editor Sizing)
+           ========================================================================== */
+        .app-wrapper { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        
+        /* Adjusted flex basis to ensure editor remains open and proportional */
+        .editor-section { flex: 0 0 45%; min-width: 400px; max-width: 600px; display: flex; background: var(--surface-color); border-right: 1px solid var(--border-color); z-index: 10; overflow: hidden; position: relative; padding-bottom: 60px; /* Space for action bar */}
+        .editor-sidebar { width: 140px; background: var(--bg-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; overflow-y: auto; padding: 10px 0;}
+        .editor-forms { flex: 1; padding: 24px; overflow-y: auto; scroll-behavior: smooth; }
+        
+        .sticker-btn {
+            background: transparent; border: none; padding: 12px 10px; margin: 4px 10px; text-align: center;
+            border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);
+            cursor: pointer; transition: var(--transition); display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .sticker-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+        .sticker-btn.active { background: var(--surface-hover); color: var(--primary-color); box-shadow: var(--shadow-sm); border-bottom: 2px solid var(--primary-color); }
+
+        .editor-tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .editor-tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .preview-section { flex: 1; overflow-y: auto; padding: 40px; display: flex; justify-content: center; align-items: flex-start; background: var(--bg-color); }
+
+        h1, h2, h3 { font-weight: 600; color: var(--text-primary); }
+        h2 { font-size: 1.15rem; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+        
+        .form-group { margin-bottom: 16px; position: relative; }
+        .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        
+        label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; font-size: 0.95rem;
+            background: var(--bg-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); color: var(--text-primary); transition: var(--transition);
+            font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: var(--focus-ring); background: var(--surface-color); }
+        .error-msg { color: var(--danger-color); font-size: 0.75rem; margin-top: 4px; display: none; }
+        textarea { resize: vertical; min-height: 80px; max-height: 200px; }
+        .card { background: var(--surface-color); padding: 5px; margin-bottom: 24px; }
+
+        /* ==========================================================================
+           BUTTONS & ACTIONS
+           ========================================================================== */
+        button { cursor: pointer; font-weight: 500; border-radius: var(--radius-md); border: none; padding: 10px 16px; font-size: 0.9rem; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 6px;}
+        .btn-primary { background: var(--primary-color); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--surface-hover); border-color: #9ca3af; }
+        .btn-danger { background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); }
+        .btn-success { background: var(--success-color); color: #fff; }
+        .btn-inline-save { position: absolute; right: 0; top: -5px; padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; }
+        
+        .action-bar {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: var(--surface-color); border-top: 1px solid var(--border-color);
+            padding: 12px 16px; display: flex; gap: 8px; z-index: 20; box-shadow: 0 -4px 16px rgba(0,0,0,0.05);
+        }
+        .action-bar button { flex: 1; padding: 10px; font-weight: 600; font-size: 0.85rem;}
+
+        .qr-dropzone {
+            border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 25px;
+            text-align: center; background: var(--surface-hover); cursor: pointer; transition: var(--transition);
+        }
+
+        .items-editor-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-bottom: 16px; }
+        .items-editor-table th { text-align: left; font-size: 0.8rem; color: var(--text-secondary); padding: 0 8px; font-weight: 600; text-transform: uppercase;}
+        .items-editor-table td { padding: 0 4px; }
+        .bank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* ==========================================================================
+           PREVIEW STYLES (Print Target)
+           ========================================================================== */
+        .receipt-paper { 
+            background: #ffffff; color: #333333; box-shadow: var(--shadow-md); margin: 0 auto; 
+            position: relative; overflow: hidden; display: flex; flex-direction: column; border-radius: var(--radius-md);
+            font-size: 0.85rem; 
+        }
+        .size-a4 { width: 210mm; min-height: 297mm; }
+        .preview-inner { padding: 40px; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        
+        .preview-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+        .preview-logo { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-right: 20px;}
+        .preview-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .preview-company-title h2 { margin: 0; font-size: 1.75rem; color: #0f172a; border: none; padding: 0; font-weight: 800; text-transform: uppercase; }
+        .preview-company-title p { margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b; line-height: 1.5; }
+        
+        .preview-header-right { text-align: right; }
+        .preview-header-right h1 { color: var(--receipt-theme-color); font-size: 2.5rem; margin-bottom: 4px; font-weight: 900; text-transform: uppercase; line-height: 1; }
+        .preview-header-right .inv-number { font-weight: 700; font-size: 1.1rem; color: #475569; }
+
+        .preview-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .preview-meta-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #f8fafc; display: flex; flex-direction: column; }
+        .meta-title { display: flex; align-items: center; gap: 6px; color: #1e293b; font-weight: 700; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; }
+        .meta-title svg { width: 14px; height: 14px; fill: var(--receipt-theme-color); }
+        .meta-value-title { font-weight: 700; font-size: 0.95rem; color: var(--receipt-theme-color); margin-bottom: 4px; }
+        .meta-value-sub { font-size: 0.8rem; color: #475569; line-height: 1.5; }
+
+        .preview-table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
+        .preview-table th { background: var(--receipt-theme-color); color: #fff; padding: 12px 16px; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
+        .preview-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155; }
+        .preview-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+
+        .totals-container { display: flex; justify-content: flex-end; }
+        .totals-box { width: 340px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; box-shadow: var(--shadow-sm);}
+        .preview-totals-row { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 0.85rem; color: #475569; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+        .preview-totals-row.grand-total { font-weight: 800; font-size: 1.15rem; background: var(--receipt-theme-color); color: #fff; }
+        
+        .preview-footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+        .info-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; }
+        .info-card h4 { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; color: var(--receipt-theme-color); text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+        .info-card h4 svg { width: 14px; height: 14px; fill: var(--receipt-theme-color); }
+        .card-bank { border-top: 4px solid var(--receipt-theme-color); }
+        
+        .bank-details-text { font-size: 0.8rem; line-height: 1.6; color: #334155; }
+        .bank-details-text strong { display: inline-block; color: #1e293b; font-weight: 600; width: 100px; }
+        
+        .qr-wrapper { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px;}
+        .qr-wrapper img { max-width: 90px; max-height: 90px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; }
+
+        .notes-terms-list { margin-left: 18px; font-size: 0.8rem; color: #475569; line-height: 1.5; }
+
+        /* UPGRADED SIGNATURE & NOTES SECTION (Parallel Layout) */
+        .footer-bottom-area {
+            display: flex; flex-direction: row; justify-content: space-between; align-items: stretch;
+            margin-top: auto; padding-top: 20px; gap: 40px;
+        }
+        .card-notes { flex: 1; border-left: 4px solid var(--receipt-theme-color); background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+        .card-notes h4 { color: #1e293b; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px; text-transform: uppercase;}
+        .card-notes h4 svg { fill: #475569; width: 14px; height: 14px; }
+
+        .signature-section {
+            width: 280px; text-align: center; display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-end; /* Pushes content to bottom to parallel terms */
+        }
+        .signature-img { width: 100%; max-width: 240px; height: 90px; object-fit: contain; margin-bottom: 12px; }
+        .signature-line { width: 100%; border-top: 2px solid #0f172a; padding-top: 10px; font-weight: 700; font-size: 0.95rem; color: #0f172a; text-transform: uppercase; }
+
+        .footer-thank-you { text-align: center; color: var(--receipt-theme-color); font-weight: 700; font-size: 0.9rem; margin-top: 20px;}
+
+        /* ==========================================================================
+           COMPLIANCE FOOTER
+           ========================================================================== */
+        .compliance-footer {
+            background: var(--bg-color); border-top: 1px solid var(--border-color);
+            padding: 16px 24px; text-align: center; font-size: 0.8rem; color: var(--text-secondary);
+            display: flex; justify-content: center; gap: 24px; z-index: 50;
+        }
+        .compliance-footer a { color: var(--text-secondary); text-decoration: none; transition: var(--transition); }
+        .compliance-footer a:hover { color: var(--primary-color); }
+
+        /* Mobile & Printing overrides */
+        @media (max-width: 1024px) {
+            .app-container { flex-direction: column; overflow: visible; }
+            .editor-section { max-width: 100%; flex: none; height: auto; border-right: none; }
+            .preview-section { display: none; padding: 10px; }
+            .receipt-paper { width: 100% !important; min-width: 700px; transform-origin: top left; }
+            .footer-bottom-area { flex-direction: column; align-items: center; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="nav-brand"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg> E-X-P-R-T <span style="font-size: 0.7rem; background: var(--receipt-light-bg); padding: 2px 6px; border-radius: 4px; color: var(--primary-color);">PRO</span></div>
+    <div class="nav-links">
+        <a class="nav-link" onclick="app.toggleDashboard()">Dashboard</a>
+        <a class="nav-link active">Workspace</a>
+        <a class="nav-link">Settings</a>
+    </div>
+</nav>
+
+<div class="dashboard-matrix hidden" id="dashboardPanel">
+    <div class="stat-card">
+        <div class="stat-title">Total Invoices Generated</div>
+        <div class="stat-value" id="dashTotalCount">0</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Gross Invoiced Revenue</div>
+        <div class="stat-value" id="dashGrossRev">$0.00</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">Last Activity</div>
+        <div class="stat-value" id="dashLastActive" style="font-size: 1.1rem; padding-top: 5px;">No Data</div>
+    </div>
+</div>
+
+<div class="app-wrapper">
+    <div class="app-container">
+        
+        <section class="editor-section">
+            <div class="editor-sidebar">
+                <button class="sticker-btn active" data-target="sec-doc"><span>📄</span> Document</button>
+                <button class="sticker-btn" data-target="sec-company"><span>🏢</span> Company</button>
+                <button class="sticker-btn" data-target="sec-customer"><span>👤</span> Customer</button>
+                <button class="sticker-btn" data-target="sec-items"><span>🛍️</span> Items</button>
+                <button class="sticker-btn" data-target="sec-payment"><span>💳</span> Payment</button>
+                <button class="sticker-btn" data-target="sec-extras"><span>📝</span> Extras</button>
+                <button class="sticker-btn" data-target="sec-history"><span>📜</span> History</button>
+            </div>
+
+            <div class="editor-forms" id="mainForm">
+                
+                <div id="sec-doc" class="editor-tab-content active card">
+                    <h2>Document Settings</h2>
+                    <div class="form-row">
+                        <div class="form-group"><label>Print Theme Color</label><input type="color" id="themeColorSelect" value="#1a56db" style="height:45px; padding:2px;"></div>
+                        <div class="form-group"><label>Type</label><select id="receiptType" data-bind="type"><option value="Invoice">Invoice</option><option value="Receipt">Receipt</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Number</label><div style="display:flex; gap:8px;"><input type="text" id="receiptNumber" data-bind="number" placeholder="INV-000123"><button id="btnAutoNum" class="btn-secondary" type="button">↻</button></div></div>
+                        <div class="form-group"><label>Issue Date</label><input type="date" id="issueDate" data-bind="date"></div>
+                    </div>
+                    <div class="form-group"><label>Currency</label><select id="currencySelect"><option value="USD|$">USD ($)</option><option value="PKR|Rs">PKR (Rs)</option><option value="EUR|€">EUR (€)</option><option value="GBP|£">GBP (£)</option></select></div>
+                </div>
+
+                <div id="sec-company" class="editor-tab-content card">
+                    <h2>Company Profile</h2>
+                    <div class="form-row">
+                        <div class="form-group"><label>Business Logo</label><input type="file" id="logoUpload" accept="image/*"></div>
+                        <div class="form-group"><label>Authorized Signature</label><input type="file" id="sigUpload" accept="image/*"></div>
+                    </div>
+                    <div class="form-group"><label>Business Name *</label><input type="text" id="bizName" class="req-field" data-bind="bizName" placeholder="My Company LLC"></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Email</label><input type="email" id="bizEmail" data-bind="bizEmail"></div>
+                        <div class="form-group"><label>Phone</label><input type="tel" id="bizPhone" data-bind="bizPhone"></div>
+                    </div>
+                    <div class="form-group"><label>Address</label><textarea id="bizAddress" data-bind="bizAddress"></textarea></div>
+                </div>
+
+                <div id="sec-customer" class="editor-tab-content card">
+                    <h2>Customer Details <select id="clientProfileSelect" style="width: auto; padding: 4px; font-size: 0.8rem; font-weight: normal; margin-left: 10px;"><option value="">-- Load Profile --</option></select></h2>
+                    <div class="form-row">
+                        <div class="form-group"><label>Customer Name *</label><input type="text" id="custName" class="req-field" data-bind="custName" placeholder="Client Name"></div>
+                        <div class="form-group"><label>Company</label><input type="text" id="custCompany" data-bind="custCompany" placeholder="Client Business"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Email</label><input type="email" id="custEmail" data-bind="custEmail"></div>
+                        <div class="form-group"><label>Phone</label><input type="tel" id="custPhone" data-bind="custPhone"></div>
+                    </div>
+                    <div class="form-group"><label>Address</label><textarea id="custAddress" data-bind="custAddress"></textarea></div>
+                    <button id="btnSaveClientProfile" class="btn-secondary" type="button" style="font-size: 0.8rem;">💾 Save as Client Profile</button>
+                </div>
+
+                <div id="sec-items" class="editor-tab-content card">
+                    <h2>Tax, Discount & Items</h2>
+                    <div class="form-row" style="background: var(--surface-hover); padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px;">
+                        <div class="form-group"><label style="color: var(--danger-color);">Tax Rate (%)</label><input type="number" id="taxRate" placeholder="0" min="0" step="0.01"></div>
+                        <div class="form-group"><label style="color: var(--success-color);">Discount</label><input type="number" id="discountVal" placeholder="0" min="0" step="0.01"></div>
+                        <div class="form-group"><label>Shipping</label><input type="number" id="shippingCost" placeholder="0" min="0" step="0.01"></div>
+                    </div>
+                    <table class="items-editor-table">
+                        <thead><tr><th>Description *</th><th style="width:20%">Qty *</th><th style="width:25%">Price *</th><th></th></tr></thead>
+                        <tbody id="itemsBody"></tbody>
+                    </table>
+                    <button id="btnAddItem" class="btn-secondary" style="width:100%;" type="button">+ Add Item</button>
+                </div>
+
+                <div id="sec-payment" class="editor-tab-content card">
+                    <h2>Payment Gateways</h2>
+                    <div class="form-group">
+                        <label>Select Payment Infrastructure</label>
+                        <select id="paymentArchType">
+                            <option value="bank">Direct Bank Wire (IBAN/SWIFT)</option>
+                            <option value="stripe">Stripe Checkout Links</option>
+                            <option value="paypal">PayPal Business URL</option>
+                            <option value="payoneer">Payoneer Corporate Routing</option>
+                            <option value="wise">Wise / Revolut Tag</option>
+                        </select>
+                    </div>
+                    
+                    <div id="bankFields">
+                        <div class="form-group">
+                            <label>Bank Setup Details</label>
+                            <div class="bank-grid">
+                                <input type="text" id="bankAccTitle" placeholder="Account Title">
+                                <input type="text" id="bankName" placeholder="Bank Name">
+                                <input type="text" id="bankAccNo" placeholder="Account Number">
+                                <input type="text" id="bankIban" placeholder="IBAN">
+                                <input type="text" id="bankSwift" placeholder="SWIFT Code">
+                                <input type="text" id="bankBranch" placeholder="Branch Name">
+                            </div>
+                            <textarea id="bankDetails" style="display:none;"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div id="urlGatewayFields" style="display:none;">
+                        <div class="form-group"><label id="urlLabel">Payment Gateway URL</label><input type="url" id="payUrl" placeholder="https://..."></div>
+                    </div>
+
+                    <div class="form-group"><label>Payment Info Text</label><input type="text" id="payMethod" placeholder="Scan the QR code below to make a secure payment."></div>
+                    <div class="form-group">
+                        <label>Payment QR Code</label>
+                        <div class="qr-dropzone" onclick="document.getElementById('qrUpload').click()">
+                            <span>📁 Click to Upload Payment QR Image</span>
+                            <input type="file" id="qrUpload" accept="image/*" style="display:none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-extras" class="editor-tab-content card">
+                    <h2>Additional Parameters</h2>
+                    <div class="form-group">
+                        <label>Notes (Press Enter for Auto-Numbering)</label>
+                        <textarea id="notes" placeholder="1. Thank you for choosing our services."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Terms & Conditions (Press Enter for Auto-Numbering)</label>
+                        <textarea id="terms" placeholder="1. Payment settled within 14 days."></textarea>
+                    </div>
+                </div>
+
+                <div id="sec-history" class="editor-tab-content card">
+                    <h2>Saved History Workspace</h2>
+                    <div id="historyLogsContainer" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+            </div>
+            
+            <div class="action-bar">
+                <button id="btnSaveHistory" class="btn-success" type="button">💾 Save</button>
+                <button id="btnPrint" class="btn-primary" type="button">🖨️ Generate PDF</button>
+                <button id="btnReset" class="btn-danger" type="button">↺ Reset</button>
+            </div>
+        </section>
+
+        <section class="preview-section">
+            <div id="receiptPaper" class="receipt-paper size-a4">
+                <div class="preview-inner">
+                    
+                    <div class="preview-header">
+                        <div style="display: flex; align-items: center;">
+                            <div class="preview-logo"><img id="prevLogo" src="" alt="Logo" style="display:none;"></div>
+                            <div class="preview-company-title">
+                                <h2 id="prevBizName">Company Name</h2>
+                                <p id="prevBizAddress">Company Address</p>
+                            </div>
+                        </div>
+                        <div class="preview-header-right">
+                            <h1 id="prevType">Invoice</h1>
+                            <div class="inv-number"># <span id="prevNumber">INV-000123</span></div>
+                        </div>
+                    </div>
+
+                    <div class="preview-meta">
+                        <div class="preview-meta-box">
+                            <div class="meta-title"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> From</div>
+                            <div class="meta-value-title" id="prevBizNameMeta">Business Name</div>
+                            <div class="meta-value-sub" id="prevBizContact" style="font-weight: 500;"></div>
+                        </div>
+                        <div class="preview-meta-box">
+                            <div class="meta-title"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> Bill To</div>
+                            <div class="meta-value-title" id="prevCustName">Customer Name</div>
+                            <div class="meta-value-sub" id="prevCustCompany" style="font-style:italic; font-weight: 600;"></div>
+                            <div class="meta-value-sub" id="prevCustAddress" style="white-space: pre-wrap;"></div>
+                            <div class="meta-value-sub" id="prevCustContact" style="font-weight: 500;"></div>
+                        </div>
+                        <div class="preview-meta-box">
+                            <div class="meta-title"><svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg> Date</div>
+                            <div class="meta-value-title" id="prevDate">2026-07-06</div>
+                        </div>
+                    </div>
+
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th style="width:6%; text-align:center;">#</th>
+                                <th style="width:44%">DESCRIPTION</th>
+                                <th style="width:15%; text-align:center;">QTY</th>
+                                <th style="width:15%; text-align:right;">PRICE</th>
+                                <th style="width:20%; text-align:right;">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prevItemsBody"></tbody>
+                    </table>
+
+                    <div class="totals-container">
+                        <div class="totals-box">
+                            <div class="preview-totals-row"><span>Subtotal:</span><span id="prevSubtotal">0.00</span></div>
+                            <div class="preview-totals-row" id="rowDiscount" style="display:none; color:var(--success-color);"><span>Discount:</span><span id="prevDiscount">-0.00</span></div>
+                            <div class="preview-totals-row" id="rowTax" style="display:none; color:var(--danger-color);"><span>Tax:</span><span id="prevTax">0.00</span></div>
+                            <div class="preview-totals-row" id="rowShipping" style="display:none;"><span>Shipping:</span><span id="prevShipping">0.00</span></div>
+                            <div class="preview-totals-row grand-total"><span>TOTAL DUE:</span><span id="prevTotal">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="preview-footer-grid">
+                        <div class="info-card card-bank" id="wrapPayment">
+                            <h4><svg viewBox="0 0 24 24"><path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1L2 6v2h20V6z"/></svg> <span id="prevGatewayTitle">BANK DETAILS</span></h4>
+                            <div class="bank-details-text" id="prevBankDetails" style="white-space:pre-wrap;"></div>
+                            <a id="prevPayUrl" href="#" target="_blank" style="display:none; margin-top:8px; color:var(--receipt-theme-color); font-weight:600; text-decoration:none; word-break:break-all; font-size:0.75rem;">Pay Online Securely ↗</a>
+                        </div>
+
+                        <div class="info-card" id="wrapQr" style="display:none; text-align: center; border-top: 4px solid #64748b;">
+                            <h4 style="justify-content: center; width: 100%;"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h3v2h-3zm-3 0h2v2h-2zm3 3h3v2h-3zm-3 0h2v2h-2zm3 3h3v2h-3zm-3 0h2v2h-2zm-3-3h2v2h-2zm0-3h2v2h-2zm0 6h2v2h-2z"/></svg> SCAN TO PAY</h4>
+                            <div class="qr-wrapper">
+                                <div style="font-size:0.65rem; color:#475569; margin-bottom: 2px;" id="prevPayMethod"></div>
+                                <img id="prevQr" src="" alt="QR">
+                            </div>
+                        </div>
+
+                        <div class="info-card" id="wrapTerms" style="display:none;">
+                            <h4><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg> TERMS</h4>
+                            <div id="prevTermsList" class="notes-terms-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="footer-bottom-area">
+                        <div class="card-notes" id="wrapNotes" style="display:none;">
+                            <h4><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg> NOTES</h4>
+                            <div id="prevNotesList" class="notes-terms-list"></div>
+                        </div>
+
+                        <div class="signature-section">
+                            <img id="prevSig" class="signature-img" src="" alt="Signature" style="display:none;">
+                            <div class="signature-line">Authorized Signature</div>
+                        </div>
+                    </div>
+                    
+                    <div class="footer-thank-you">Thank you for your business!</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="compliance-footer">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Disclaimer</a>
+        <a href="#">About Us</a>
+        <a href="#">Contact Us</a>
+    </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let state = { items: [{ id: Date.now(), desc: '', qty: '', price: '' }], logoData: null, sigData: null, qrData: null };
+    let historyLogs = JSON.parse(localStorage.getItem('rgp_history') || '[]');
+    let clientProfiles = JSON.parse(localStorage.getItem('rgp_saved_profiles') || '[]');
+
+    const els = {
+        binds: document.querySelectorAll('[data-bind]'),
+        itemsBody: document.getElementById('itemsBody'),
+        discountVal: document.getElementById('discountVal'),
+        taxRate: document.getElementById('taxRate'),
+        shippingCost: document.getElementById('shippingCost'),
+        currencySelect: document.getElementById('currencySelect'),
+        themeColorSelect: document.getElementById('themeColorSelect'),
+        paymentArchType: document.getElementById('paymentArchType'),
+        bankFields: document.getElementById('bankFields'),
+        urlGatewayFields: document.getElementById('urlGatewayFields'),
+        urlLabel: document.getElementById('urlLabel'),
+        bankDetails: document.getElementById('bankDetails'), 
+        notes: document.getElementById('notes'),
+        terms: document.getElementById('terms'),
+        historyLogsContainer: document.getElementById('historyLogsContainer')
+    };
+
+    // Dashboard Engine Calculation
+    const updateDashboard = () => {
+        document.getElementById('dashTotalCount').innerText = historyLogs.length;
+        if (historyLogs.length > 0) {
+            let rev = 0;
+            historyLogs.forEach(log => {
+                // Parse currency string back to number
+                let num = parseFloat(log.totalVal.replace(/[^0-9.-]+/g, ""));
+                if(!isNaN(num)) rev += num;
+            });
+            document.getElementById('dashGrossRev').innerText = `$${rev.toFixed(2)}`;
+            document.getElementById('dashLastActive').innerText = `${historyLogs[historyLogs.length-1].date} (${historyLogs[historyLogs.length-1].number})`;
+        }
+    };
+    window.app = {
+        toggleDashboard: () => {
+            const dash = document.getElementById('dashboardPanel');
+            dash.classList.toggle('hidden');
+        }
+    };
+
+    // Live Event Binding across Editor Forms
+    document.getElementById('mainForm').addEventListener('input', () => { updatePreview(); });
+    document.getElementById('mainForm').addEventListener('change', () => { updatePreview(); });
+
+    // Multi-Merchant Payment Switcher
+    els.paymentArchType.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if(val === 'bank') {
+            els.bankFields.style.display = 'block'; els.urlGatewayFields.style.display = 'none';
+        } else {
+            els.bankFields.style.display = 'none'; els.urlGatewayFields.style.display = 'block';
+            let label = 'Gateway URL';
+            if(val === 'stripe') label = 'Stripe Checkout Link';
+            if(val === 'paypal') label = 'PayPal.Me URL';
+            if(val === 'payoneer') label = 'Payoneer Routing Info';
+            if(val === 'wise') label = 'Wise Payment Tag';
+            els.urlLabel.innerText = label;
+        }
+        updatePreview();
+    });
+
+    // Theme Selector
+    els.themeColorSelect.addEventListener('input', (e) => {
+        document.documentElement.style.setProperty('--receipt-theme-color', e.target.value);
+        document.documentElement.style.setProperty('--receipt-light-bg', e.target.value + '15');
+    });
+
+    // Sidebar Tabs Logic
+    document.querySelectorAll('.sticker-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.editor-tab-content').forEach(c => c.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            document.getElementById(e.currentTarget.getAttribute('data-target')).classList.add('active');
+        });
+    });
+
+    // Client Profile Storage Logic
+    const renderProfileDropdown = () => {
+        const select = document.getElementById('clientProfileSelect');
+        select.innerHTML = '<option value="">-- Load Profile --</option>';
+        clientProfiles.forEach((p, i) => { select.innerHTML += `<option value="${i}">${p.name} (${p.company})</option>`; });
+    };
+    document.getElementById('btnSaveClientProfile').addEventListener('click', () => {
+        const name = document.getElementById('custName').value;
+        if(!name) return alert("Customer Name is required to save profile.");
+        clientProfiles.push({
+            name: name, company: document.getElementById('custCompany').value,
+            email: document.getElementById('custEmail').value, phone: document.getElementById('custPhone').value,
+            address: document.getElementById('custAddress').value
+        });
+        localStorage.setItem('rgp_saved_profiles', JSON.stringify(clientProfiles));
+        renderProfileDropdown(); alert("Client Profile Saved!");
+    });
+    document.getElementById('clientProfileSelect').addEventListener('change', (e) => {
+        if(e.target.value === "") return;
+        const p = clientProfiles[e.target.value];
+        document.getElementById('custName').value = p.name || '';
+        document.getElementById('custCompany').value = p.company || '';
+        document.getElementById('custEmail').value = p.email || '';
+        document.getElementById('custPhone').value = p.phone || '';
+        document.getElementById('custAddress').value = p.address || '';
+        updatePreview();
+    });
+    renderProfileDropdown();
+
+    // Auto-Numbering fix
+    const autoNumber = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const el = e.target;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const val = el.value;
+            const linesBeforeCaret = val.substring(0, start).split('\n');
+            const currentLine = linesBeforeCaret[linesBeforeCaret.length - 1];
+            const match = currentLine.match(/^(\d+)\.\s/);
+            
+            let insertText = '\n';
+            if (match) { insertText += `${parseInt(match[1], 10) + 1}. `; } 
+            else if (val.trim() === '') { insertText += '1. '; }
+
+            el.value = val.substring(0, start) + insertText + val.substring(end);
+            el.selectionStart = el.selectionEnd = start + insertText.length;
+            updatePreview();
+        }
+    };
+    els.notes.addEventListener('keydown', autoNumber);
+    els.terms.addEventListener('keydown', autoNumber);
+
+    // Bank string construction
+    const bankInputs = document.querySelectorAll('.bank-grid input');
+    bankInputs.forEach(input => input.addEventListener('input', () => {
+        let str = '';
+        if(document.getElementById('bankAccTitle').value) str += `Account Title: ${document.getElementById('bankAccTitle').value}\n`;
+        if(document.getElementById('bankName').value) str += `Bank Name: ${document.getElementById('bankName').value}\n`;
+        if(document.getElementById('bankAccNo').value) str += `Account No: ${document.getElementById('bankAccNo').value}\n`;
+        if(document.getElementById('bankIban').value) str += `IBAN: ${document.getElementById('bankIban').value}\n`;
+        if(document.getElementById('bankSwift').value) str += `SWIFT: ${document.getElementById('bankSwift').value}\n`;
+        if(document.getElementById('bankBranch').value) str += `Branch: ${document.getElementById('bankBranch').value}\n`;
+        els.bankDetails.value = str.trim();
+        updatePreview();
+    }));
+
+    const renderItemsEditor = () => {
+        els.itemsBody.innerHTML = '';
+        state.items.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="item-desc req-field" data-idx="${index}" value="${item.desc}" placeholder="Item Description"></td>
+                <td><input type="number" class="item-qty" data-idx="${index}" value="${item.qty}" placeholder="0" min="0"></td>
+                <td><input type="number" class="item-price" data-idx="${index}" value="${item.price}" placeholder="0" min="0"></td>
+                <td style="text-align:right;"><button class="btn-danger btn-remove-item" data-idx="${index}">✕</button></td>
+            `;
+            els.itemsBody.appendChild(tr);
+        });
+        document.querySelectorAll('.item-desc, .item-qty, .item-price').forEach(el => el.addEventListener('input', (e) => {
+            const field = e.target.classList.contains('item-desc') ? 'desc' : e.target.classList.contains('item-qty') ? 'qty' : 'price';
+            state.items[e.target.dataset.idx][field] = e.target.value;
+            updatePreview();
+        }));
+        document.querySelectorAll('.btn-remove-item').forEach(el => el.addEventListener('click', (e) => {
+            if(state.items.length > 1) { state.items.splice(e.target.dataset.idx, 1); renderItemsEditor(); updatePreview(); }
+        }));
+    };
+    document.getElementById('btnAddItem').addEventListener('click', () => { state.items.push({ id: Date.now(), desc: '', qty: '', price: '' }); renderItemsEditor(); });
+
+    // Prevent text duplication on preview render
+    const updatePreview = () => {
+        els.binds.forEach(el => {
+            const targets = document.querySelectorAll(`[id^="prev${el.getAttribute('data-bind').charAt(0).toUpperCase() + el.getAttribute('data-bind').slice(1)}"]`);
+            targets.forEach(t => { t.innerText = el.value; });
+        });
+
+        document.getElementById('prevBizContact').innerText = [document.getElementById('bizPhone').value, document.getElementById('bizEmail').value].filter(Boolean).join(' | ');
+        document.getElementById('prevCustContact').innerText = [document.getElementById('custPhone').value, document.getElementById('custEmail').value].filter(Boolean).join(' | ');
+
+        // Overwrite innerHTML cleanly to prevent append duplication bugs
+        const notesVal = els.notes.value.trim();
+        const termsVal = els.terms.value.trim();
+        document.getElementById('wrapNotes').style.display = notesVal ? 'block' : 'none';
+        document.getElementById('prevNotesList').innerHTML = notesVal ? notesVal.replace(/\n/g, '<br>') : '';
+        document.getElementById('wrapTerms').style.display = termsVal ? 'block' : 'none';
+        document.getElementById('prevTermsList').innerHTML = termsVal ? termsVal.replace(/\n/g, '<br>') : '';
+        
+        // Multi-Merchant Output
+        const payType = els.paymentArchType.value;
+        const pMethod = document.getElementById('payMethod').value;
+        document.getElementById('prevPayMethod').innerText = pMethod;
+
+        if(payType === 'bank') {
+            document.getElementById('prevGatewayTitle').innerText = 'BANK DETAILS';
+            const bankLines = els.bankDetails.value.split('\n').map(l => l.includes(':') ? `<strong>${l.split(':')[0]}:</strong>${l.split(':').slice(1).join(':')}` : l);
+            document.getElementById('prevBankDetails').innerHTML = bankLines.join('<br>');
+            document.getElementById('prevPayUrl').style.display = 'none';
+        } else {
+            const urlVal = document.getElementById('payUrl').value;
+            let titleStr = payType.toUpperCase() + ' PAYMENT';
+            document.getElementById('prevGatewayTitle').innerText = titleStr;
+            document.getElementById('prevBankDetails').innerText = '';
+            if(urlVal) {
+                document.getElementById('prevPayUrl').href = urlVal;
+                document.getElementById('prevPayUrl').innerText = "Click to Pay Online Securely ↗";
+                document.getElementById('prevPayUrl').style.display = 'block';
+            } else { document.getElementById('prevPayUrl').style.display = 'none'; }
+        }
+
+        if(state.logoData) { document.getElementById('prevLogo').src = state.logoData; document.getElementById('prevLogo').style.display = 'block'; }
+        if(state.sigData) { document.getElementById('prevSig').src = state.sigData; document.getElementById('prevSig').style.display = 'block'; }
+        
+        if(state.qrData) { document.getElementById('prevQr').src = state.qrData; document.getElementById('wrapQr').style.display = 'block'; } 
+        else { document.getElementById('wrapQr').style.display = 'none'; }
+
+        // Math & Tables
+        const symbol = els.currencySelect.value.split('|')[1] || '';
+        const prevItemsBody = document.getElementById('prevItemsBody');
+        prevItemsBody.innerHTML = '';
+        let subtotal = 0, indexCounter = 1;
+
+        state.items.forEach((item) => {
+            let p = parseFloat(item.price) || 0, q = parseFloat(item.qty) || 0;
+            if(!item.desc && p === 0) return;
+            let t = p * q; subtotal += t;
+            prevItemsBody.innerHTML += `<tr><td style="text-align:center;">${indexCounter}</td><td>${item.desc}</td><td style="text-align:center;">${q||''}</td><td style="text-align:right;">${symbol} ${p.toFixed(2)}</td><td style="text-align:right; font-weight:700;">${symbol} ${t.toFixed(2)}</td></tr>`;
+            indexCounter++;
+        });
+
+        let d = parseFloat(els.discountVal.value) || 0, tR = parseFloat(els.taxRate.value) || 0, s = parseFloat(els.shippingCost.value) || 0;
+        let taxAmt = (subtotal - d) * (tR / 100);
+        let gTotal = (subtotal - d) + taxAmt + s;
+
+        document.getElementById('prevSubtotal').innerText = `${symbol} ${subtotal.toFixed(2)}`;
+        
+        document.getElementById('rowDiscount').style.display = d > 0 ? 'flex' : 'none';
+        if(d>0) document.getElementById('prevDiscount').innerText = `-${symbol} ${d.toFixed(2)}`;
+        
+        document.getElementById('rowTax').style.display = taxAmt > 0 ? 'flex' : 'none';
+        if(taxAmt>0) document.getElementById('prevTax').innerText = `${symbol} ${taxAmt.toFixed(2)}`;
+        
+        document.getElementById('rowShipping').style.display = s > 0 ? 'flex' : 'none';
+        if(s>0) document.getElementById('prevShipping').innerText = `${symbol} ${s.toFixed(2)}`;
+
+        document.getElementById('prevTotal').innerText = `${symbol} ${gTotal.toFixed(2)}`;
+    };
+
+    // Images
+    const handleFile = (id, stateKey) => {
+        document.getElementById(id).addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => { state[stateKey] = ev.target.result; updatePreview(); };
+                reader.readAsDataURL(file);
+            }
+        });
+    };
+    handleFile('logoUpload', 'logoData'); handleFile('sigUpload', 'sigData'); handleFile('qrUpload', 'qrData');
+
+    document.getElementById('btnAutoNum').addEventListener('click', () => { document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*1000000); updatePreview(); });
+
+    // Client-Side PDF Engine Optimization (html2pdf.js)
+    document.getElementById('btnPrint').addEventListener('click', () => { 
+        if(!document.getElementById('bizName').value || !document.getElementById('custName').value) {
+            alert("Please provide Business and Customer names before printing."); return;
+        }
+        updatePreview();
+        const element = document.getElementById('receiptPaper');
+        const opt = {
+            margin:       0,
+            filename:     `${document.getElementById('receiptNumber').value}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+        // Generate PDF
+        html2pdf().set(opt).from(element).save();
+    });
+
+    const renderHistoryLogs = () => {
+        els.historyLogsContainer.innerHTML = '';
+        if(historyLogs.length === 0) { els.historyLogsContainer.innerHTML = `<p style="font-size:0.85rem; color:var(--text-secondary);">No history found.</p>`; return; }
+        historyLogs.forEach((h, idx) => {
+            els.historyLogsContainer.innerHTML += `
+                <div style="display:flex; justify-content:space-between; padding:10px; border:1px solid #e5e7eb; border-radius:8px; margin-bottom:8px;">
+                    <div><strong>${h.custName || 'Unknown'}</strong><br><small>${h.number} | ${h.totalVal}</small></div>
+                    <div style="display:flex; gap:5px;"><button class="btn-secondary" onclick="app.loadHistoryItem(${idx})">Load</button></div>
+                </div>`;
+        });
+        updateDashboard();
+    };
+
+    document.getElementById('btnSaveHistory').addEventListener('click', () => {
+        historyLogs.push({
+            custName: document.getElementById('custName').value, number: document.getElementById('receiptNumber').value, date: document.getElementById('issueDate').value,
+            totalVal: document.getElementById('prevTotal').innerText
+        });
+        localStorage.setItem('rgp_history', JSON.stringify(historyLogs)); renderHistoryLogs(); alert("Saved to History.");
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+        if(confirm("Reset entire form?")) {
+            document.querySelectorAll('input:not([type="file"]):not(#themeColorSelect), textarea').forEach(el => el.value = '');
+            state.items = [{ id: Date.now(), desc: '', qty: '', price: '' }];
+            state.logoData = null; state.sigData = null; state.qrData = null;
+            document.getElementById('issueDate').valueAsDate = new Date();
+            renderItemsEditor(); updatePreview();
+        }
+    });
+
+    window.app.loadHistoryItem = (i) => { alert("History module standard load logic triggered (expandable in future iterations)."); };
+    
+    document.getElementById('issueDate').valueAsDate = new Date(); document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*100000);
+    renderItemsEditor(); renderHistoryLogs(); updatePreview();
+});
+</script>
+</body>
+</html>
