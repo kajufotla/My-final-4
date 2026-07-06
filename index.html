@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-X-P-R-T | Enterprise Invoice & Receipt Builder</title>
+    
+    <style>
+        /* ==========================================================================
+           CSS VARIABLES & RESET
+           ========================================================================== */
+        :root {
+            --bg-color: #f3f4f6;
+            --surface-color: #ffffff;
+            --surface-hover: #f9fafb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --primary-color: #1a56db; 
+            --primary-hover: #1e429f;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --transition: all 0.2s ease-in-out;
+            --focus-ring: 0 0 0 3px rgba(26, 86, 219, 0.2);
+            
+            --receipt-theme-color: #1a56db; 
+            --receipt-light-bg: #eff6ff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #111827;
+            --surface-color: #1f2937;
+            --surface-hover: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --border-color: #374151;
+            --shadow-sm: 0 2px 8px rgba(255, 255, 255, 0.04);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-primary); line-height: 1.5; transition: var(--transition); }
+
+        /* RTL Support */
+        [dir="rtl"] { text-align: right; }
+        [dir="rtl"] .editor-sidebar { border-right: none; border-left: 1px solid var(--border-color); }
+        [dir="rtl"] .sticker-btn { text-align: right; }
+        [dir="rtl"] .action-bar { left: auto; right: 0; }
+        [dir="rtl"] .preview-header-right { text-align: left; }
+        [dir="rtl"] .preview-table th, [dir="rtl"] .preview-table td { text-align: right; }
+        [dir="rtl"] .preview-table th:last-child, [dir="rtl"] .preview-table td:last-child { text-align: left; }
+        [dir="rtl"] .card-notes { border-left: 1px solid #e2e8f0; border-right: 3px solid var(--receipt-theme-color); }
+
+        /* ==========================================================================
+           TOP NAVIGATION (UPDATED MULTI-MODE TABS)
+           ========================================================================== */
+        .top-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface-color); padding: 12px 24px;
+            border-bottom: 1px solid var(--border-color); box-shadow: var(--shadow-sm); z-index: 50;
+        }
+        .nav-brand { font-weight: 800; font-size: 1.25rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px; letter-spacing: 1px;}
+        .nav-links { display: flex; gap: 10px; align-items: center; }
+        
+        /* High visibility mode tabs */
+        .nav-mode-btn {
+            background: var(--bg-color); color: var(--text-secondary); padding: 8px 16px;
+            font-weight: 600; font-size: 0.9rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);
+        }
+        .nav-mode-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+        .nav-mode-btn.active-mode {
+            background: var(--primary-color) !important; color: #ffffff !important;
+            border-color: var(--primary-color) !important; box-shadow: var(--shadow-md);
+        }
+
+        .nav-actions { display: flex; gap: 12px; align-items: center; }
+        .lang-switcher { padding: 6px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-primary); font-size: 0.85rem; cursor: pointer; outline: none; }
+        .lang-switcher:focus-visible { box-shadow: var(--focus-ring); }
+        
+        /* ==========================================================================
+           LAYOUT & SIDEBAR TABS
+           ========================================================================== */
+        .app-container { display: flex; flex-direction: column; height: calc(100vh - 60px); overflow: hidden; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .editor-section { flex: 1; max-width: 700px; display: flex; background: var(--surface-color); border-right: 1px solid var(--border-color); z-index: 10; overflow: hidden;}
+        .editor-sidebar { width: 140px; background: var(--bg-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; overflow-y: auto; padding: 10px 0;}
+        .editor-forms { flex: 1; padding: 24px; overflow-y: auto; scroll-behavior: smooth; }
+        
+        .sticker-btn {
+            background: transparent; border: none; padding: 12px 10px; margin: 4px 10px; text-align: center;
+            border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);
+            cursor: pointer; transition: var(--transition); display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .sticker-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+        .sticker-btn.active { background: var(--surface-hover); color: var(--primary-color); box-shadow: var(--shadow-sm); border-bottom: 2px solid var(--primary-color); }
+        .sticker-btn span { font-size: 1.25rem; }
+
+        .editor-tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .editor-tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .preview-section { flex: 1.5; overflow-y: auto; padding: 40px; display: flex; justify-content: center; align-items: flex-start; background: var(--bg-color); }
+
+        h1, h2, h3 { font-weight: 600; color: var(--text-primary); }
+        h2 { font-size: 1.15rem; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+        
+        .form-group { margin-bottom: 16px; position: relative; }
+        .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        
+        label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+
+        /* FIXED INPUT & TEXTAREA FONTS */
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; font-size: 0.95rem;
+            background: var(--bg-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); color: var(--text-primary); transition: var(--transition);
+            font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: var(--focus-ring); background: var(--surface-color); }
+        input.error, select.error, textarea.error { border-color: var(--danger-color); }
+        .error-msg { color: var(--danger-color); font-size: 0.75rem; margin-top: 4px; display: none; }
+        
+        textarea { resize: vertical; min-height: 80px; max-height: 200px; font-size: 0.9rem !important; font-weight: normal !important; line-height: 1.4; }
+        .card { background: var(--surface-color); padding: 5px; margin-bottom: 24px; }
+
+        /* ==========================================================================
+           BUTTONS & ACTIONS
+           ========================================================================== */
+        button { cursor: pointer; font-weight: 500; border-radius: var(--radius-md); border: none; padding: 10px 16px; font-size: 0.9rem; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 6px;}
+        button:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+        .btn-primary { background: var(--primary-color); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--surface-hover); border-color: #9ca3af; }
+        .btn-danger { background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); }
+        .btn-danger:hover { background: var(--danger-color); color: #fff; }
+        .btn-success { background: var(--success-color); color: #fff; }
+        .btn-success:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-inline-save { position: absolute; right: 0; top: -5px; padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; }
+        
+        .action-bar {
+            position: fixed; bottom: 0; left: 0; width: 700px;
+            background: var(--surface-color); border-top: 1px solid var(--border-color);
+            padding: 16px 24px; display: flex; gap: 12px; z-index: 20; box-shadow: 0 -4px 16px rgba(0,0,0,0.05);
+        }
+        .action-bar button { flex: 1; padding: 12px 10px; font-weight: 600; font-size: 0.95rem;}
+        .editor-spacer { height: 80px; }
+
+        .qr-dropzone {
+            border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 25px;
+            text-align: center; background: var(--surface-hover); cursor: pointer; transition: var(--transition);
+        }
+        .qr-dropzone:hover { border-color: var(--primary-color); background: var(--receipt-light-bg); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content { background: var(--surface-color); padding: 32px; border-radius: var(--radius-lg); width: 90%; max-width: 450px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+        
+        /* Auth Styles */
+        .auth-input { margin-bottom: 16px; }
+        .auth-btn { width: 100%; margin-bottom: 12px; padding: 12px; font-size: 1rem; }
+        .google-btn { background: #fff; color: #3f3f3f; border: 1px solid #ddd; display: flex; justify-content: center; align-items: center; gap: 10px; }
+        .google-btn:hover { background: #f9f9f9; }
+        .auth-switch { text-align: center; font-size: 0.85rem; color: var(--text-secondary); margin-top: 16px; }
+        .auth-switch a { color: var(--primary-color); cursor: pointer; font-weight: 600; text-decoration: none; }
+
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: 10px; background: var(--bg-color); transition: var(--transition); }
+        .list-item:hover { border-color: var(--primary-color); }
+        
+        /* DASHBOARD COUNTERS & FILTERS CONTROL */
+        .dashboard-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+        .stat-box { background: var(--bg-color); padding: 10px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--border-color); }
+        .stat-box div:first-child { font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; }
+        .stat-box div:last-child { font-size: 1.1rem; font-weight: 800; color: var(--primary-color); }
+        .dashboard-filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+        .search-input { flex: 1; min-width: 160px; }
+        .filter-select { width: auto; min-width: 120px; }
+
+        .items-editor-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-bottom: 16px; }
+        .items-editor-table th { text-align: left; font-size: 0.8rem; color: var(--text-secondary); padding: 0 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+        .items-editor-table td { padding: 0 4px; }
+
+        /* Bank/Payment Structured Grid */
+        .bank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* ==========================================================================
+           PREVIEW STYLES
+           ========================================================================== */
+        .receipt-paper { 
+            background: #ffffff; color: #333333; box-shadow: var(--shadow-md); margin: 0 auto; 
+            position: relative; overflow: hidden; display: flex; flex-direction: column; border-radius: var(--radius-md);
+            font-size: 0.85rem; 
+        }
+        .size-a4 { width: 210mm; min-height: 297mm; }
+        
+        .preview-inner { padding: 40px; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        
+        .preview-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+        .preview-logo-area { display: flex; align-items: center; gap: 20px; }
+        .preview-logo { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .preview-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .preview-company-title h2 { margin: 0; font-size: 1.75rem; color: #0f172a; border: none; padding: 0; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-company-title p { margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b; line-height: 1.5; }
+        
+        .preview-header-right { text-align: right; }
+        .preview-header-right h1 { color: var(--receipt-theme-color); font-size: 2.5rem; margin-bottom: 4px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; line-height: 1; }
+        .preview-header-right .inv-number { font-weight: 700; font-size: 1.1rem; color: #475569; }
+
+        .preview-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .preview-meta-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #f8fafc; display: flex; flex-direction: column; }
+        .meta-title { display: flex; align-items: center; gap: 6px; color: #1e293b; font-weight: 700; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .meta-title svg { width: 14px; height: 14px; fill: var(--receipt-theme-color); }
+        .meta-value-title { font-weight: 700; font-size: 0.95rem; color: var(--receipt-theme-color); margin-bottom: 4px; }
+        .meta-value-sub { font-size: 0.8rem; color: #475569; line-height: 1.5; }
+
+        .preview-table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .preview-table th { background: var(--receipt-theme-color); color: #fff; padding: 12px 16px; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .preview-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155; }
+        .preview-table tbody tr:nth-child(even) { background-color: #f8fafc; }
+
+        .totals-container { display: flex; justify-content: flex-end; }
+        .totals-box { width: 340px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff; box-shadow: var(--shadow-sm);}
+        .preview-totals-row { display: flex; justify-content: space-between; padding: 10px 16px; font-size: 0.85rem; color: #475569; border-bottom: 1px solid #f1f5f9; font-weight: 500; }
+        .preview-totals-row:last-child { border-bottom: none; }
+        .preview-totals-row.grand-total { font-weight: 800; font-size: 1.15rem; background: var(--receipt-theme-color); color: #fff; border-top: none; }
+        
+        .preview-footer-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px; 
+            align-items: stretch;
+        }
+        
+        .info-card { 
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; 
+            display: flex; flex-direction: column; box-shadow: var(--shadow-sm);
+        }
+        .info-card h4 { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; color: var(--receipt-theme-color); text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; letter-spacing: 0.5px; }
+        .info-card h4 svg { width: 14px; height: 14px; fill: var(--receipt-theme-color); }
+        
+        .card-bank { border-top: 4px solid var(--receipt-theme-color); }
+        
+        .card-qr { border-top: 4px solid #64748b; text-align: center; align-items: center; }
+        .card-qr h4 { color: #475569; border-bottom-color: #e2e8f0; width: 100%; justify-content: center; }
+        .card-qr h4 svg { fill: #475569; }
+        
+        .card-terms { border: 1px solid #e2e8f0; background-color: #ffffff; }
+        .card-terms h4 { color: #1e293b; border-bottom-color: #e2e8f0; }
+        .card-terms h4 svg { fill: #475569; }
+
+        .bank-details-text { font-size: 0.8rem; line-height: 1.6; color: #334155; }
+        .bank-details-text strong { display: inline-block; color: #1e293b; font-weight: 600; width: 100px; }
+        .payment-icons { display: flex; gap: 8px; margin-top: auto; padding-top: 12px; }
+        .payment-icons span { background: #f8fafc; border: 1px solid #e2e8f0; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; color: #475569; }
+        
+        .qr-wrapper { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; width: 100%; height: 100%; }
+        .qr-wrapper img { max-width: 90px; max-height: 90px; object-fit: contain; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; background: #fff; }
+        .qr-subtext { font-size: 0.7rem; color: #64748b; text-align: center; margin-top: auto; padding-top: 8px; }
+
+        .notes-terms-list { margin-left: 18px; font-size: 0.8rem; color: #475569; line-height: 1.5; }
+        .notes-terms-list li { margin-bottom: 4px; }
+
+        /* UPGRADED ALIGNED SIGNATURE & NOTES AREA */
+        .footer-bottom-area {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: stretch;
+            margin-top: auto;
+            padding-top: 20px;
+            gap: 40px;
+        }
+        
+        .card-notes {
+            flex: 1;
+            border-left: 4px solid var(--receipt-theme-color);
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .card-notes h4 { color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-notes h4 svg { fill: #475569; width: 14px; height: 14px; }
+
+        /* ENHANCED SIGNATURE BOX SIZE & ALLIGNMENT */
+        .signature-section {
+            width: 320px; 
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        .signature-img { width: 100%; max-width: 280px; height: 120px; object-fit: contain; margin-bottom: 12px; }
+        .signature-line { 
+            width: 100%;
+            border-top: 2px solid #0f172a; 
+            padding-top: 10px; 
+            font-weight: 700;
+            font-size: 0.95rem; 
+            color: #0f172a; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+
+        .footer-thank-you { text-align: center; color: var(--receipt-theme-color); font-weight: 700; font-size: 0.9rem; margin-top: 20px; letter-spacing: 0.5px; width: 100%;}
+
+        /* RESPONSIVE & PRINT HANDLING */
+        .mobile-tabs { display: none; }
+        @media (max-width: 1024px) {
+            .app-container { height: auto; overflow: visible; }
+            .top-nav { flex-wrap: wrap; gap: 10px; }
+            .mobile-tabs { display: flex; width: 100%; background: var(--surface-color); position: sticky; top: 0; z-index: 50; border-bottom: 1px solid var(--border-color); }
+            .tab-btn { flex: 1; padding: 14px; background: none; border: none; font-weight: bold; color: var(--text-secondary); border-radius: 0;}
+            .tab-btn.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+            .main-content { flex-direction: column; }
+            .editor-section { max-width: 100%; height: auto; flex-direction: column; display: none; border-right: none;}
+            .editor-section.active-tab { display: flex; }
+            .preview-section { display: none; padding: 10px; }
+            .preview-section.active-tab { display: flex; }
+            .editor-sidebar { width: 100%; flex-direction: row; border-right: none; border-bottom: 1px solid var(--border-color); padding: 5px; overflow-x: auto;}
+            .sticker-btn { flex: 0 0 auto; padding: 10px; margin: 0 5px; font-size: 0.8rem; flex-direction: row; }
+            .action-bar { position: static; width: 100%; flex-wrap: wrap; box-shadow: none; border-top: none; }
+            
+            .receipt-paper { width: 100% !important; min-width: 700px; border-radius: 0; transform-origin: top left; }
+            .preview-section { overflow-x: auto; }
+            .footer-bottom-area { flex-direction: column; align-items: center; gap: 20px; }
+            .card-notes, .signature-section { width: 100%; max-width: 100%; }
+        }
+        @media print {
+            body { background: #fff; }
+            .top-nav, .mobile-tabs, .editor-section, .action-bar, .modal-overlay { display: none !important; }
+            .app-container { height: auto; overflow: visible; }
+            .preview-section { padding: 0; display: block; width: 100%; overflow: visible; background: #fff;}
+            .receipt-paper { box-shadow: none; width: 100% !important; min-width: auto; padding: 0; margin: 0; border-radius: 0; border: none; }
+            .preview-inner { padding: 15px !important; } 
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { margin: 0; size: auto; }
+        }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .text-sm { font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="nav-brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        E-X-P-R-T <span style="font-size: 0.7rem; background: var(--receipt-light-bg); padding: 2px 6px; border-radius: 4px; color: var(--primary-color);">PRO</span>
+    </div>
+    
+    <!-- HIGH VISIBILITY ACTION MODE SELECTORS -->
+    <div class="nav-links">
+        <button id="navModeEditor" class="nav-mode-btn active-mode">📝 Editor Dashboard</button>
+        <button id="navModePreview" class="nav-mode-btn">👁️ Live Preview Room</button>
+    </div>
+    
+    <div class="nav-actions">
+        <select class="lang-switcher" id="langSwitcher" aria-label="Language Selector">
+            <option value="en">🇺🇸 English</option>
+            <option value="ur">🇵🇰 اردو (Urdu)</option>
+            <option value="ar">🇸🇦 العربية (Arabic)</option>
+            <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+            <option value="fr">🇫🇷 Français</option>
+            <option value="de">🇩🇪 Deutsch</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="pt">🇵🇹 Português</option>
+            <option value="zh">🇨🇳 中文 (Chinese)</option>
+            <option value="ja">🇯🇵 日本語 (Japanese)</option>
+        </select>
+        <button class="btn-secondary text-sm" onclick="app.showAuth('login')" data-i18n="nav_login">Login</button>
+        <button class="btn-primary text-sm" onclick="app.showAuth('signup')" data-i18n="nav_signup">Sign Up</button>
+    </div>
+</nav>
+
+<div class="app-container">
+    <div class="mobile-tabs">
+        <button id="tabEditor" class="tab-btn active" data-i18n="tab_editor">📝 Editor</button>
+        <button id="tabPreview" class="tab-btn" data-i18n="tab_preview">👁️ Preview</button>
+    </div>
+    
+    <div class="main-content">
+        <section class="editor-section active-tab">
+            <div class="editor-sidebar">
+                <button class="sticker-btn active" data-target="sec-doc"><span aria-hidden="true">📄</span> <div data-i18n="side_doc">Document</div></button>
+                <button class="sticker-btn" data-target="sec-company"><span aria-hidden="true">🏢</span> <div data-i18n="side_company">Company</div></button>
+                <button class="sticker-btn" data-target="sec-customer"><span aria-hidden="true">👤</span> <div data-i18n="side_customer">Customer</div></button>
+                <button class="sticker-btn" data-target="sec-items"><span aria-hidden="true">🛍️</span> <div data-i18n="side_items">Items & Tax</div></button>
+                <button class="sticker-btn" data-target="sec-payment"><span aria-hidden="true">💳</span> <div data-i18n="side_payment">Payment</div></button>
+                <button class="sticker-btn" data-target="sec-extras"><span aria-hidden="true">📝</span> <div data-i18n="side_extras">Extras</div></button>
+                <button class="sticker-btn" data-target="sec-history"><span aria-hidden="true">📜</span> <div data-i18n="side_history">Dashboard</div></button>
+            </div>
+
+            <div class="editor-forms" id="mainForm">
+                <div id="sec-doc" class="editor-tab-content active card">
+                    <h2 data-i18n="doc_title">Document Settings</h2>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="doc_theme">Print Theme Color</label><input type="color" id="themeColorSelect" value="#1a56db" style="height:45px; padding:2px; cursor:pointer;" aria-label="Theme Color"></div>
+                        <div class="form-group"><label data-i18n="doc_type">Type</label><select id="receiptType" data-bind="type"><option value="Invoice">Invoice</option><option value="Receipt">Receipt</option></select></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="doc_number">Number</label><div style="display:flex; gap:8px;"><input type="text" id="receiptNumber" data-bind="number" placeholder="INV-000123"><button id="btnAutoNum" class="btn-secondary" type="button" aria-label="Generate Random Number">↻</button></div></div>
+                        <div class="form-group"><label data-i18n="doc_date">Issue Date</label><input type="date" id="issueDate" data-bind="date"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="doc_currency">Currency</label><select id="currencySelect"><option value="USD|$">USD ($)</option><option value="PKR|Rs">PKR (Rs)</option><option value="EUR|€">EUR (€)</option><option value="GBP|£">GBP (£)</option></select></div>
+                    </div>
+                </div>
+
+                <div id="sec-company" class="editor-tab-content card">
+                    <div class="flex-between" style="margin-bottom:16px;"><h2 style="margin:0; border:none;" data-i18n="comp_title">Company Profile</h2></div>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="comp_logo">Business Logo</label><input type="file" id="logoUpload" accept="image/*"></div>
+                        <div class="form-group"><label data-i18n="comp_sig">Authorized Signature</label><input type="file" id="sigUpload" accept="image/*"></div>
+                    </div>
+                    <div class="form-group"><label data-i18n="comp_name">Business Name *</label><input type="text" id="bizName" class="req-field" data-bind="bizName" placeholder="My Company LLC"><span class="error-msg" data-i18n="err_req">Required field</span></div>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="comp_email">Email</label><input type="email" id="bizEmail" data-bind="bizEmail"></div>
+                        <div class="form-group"><label data-i18n="comp_phone">Phone</label><input type="tel" id="bizPhone" data-bind="bizPhone"></div>
+                    </div>
+                    <div class="form-group"><label data-i18n="comp_address">Address</label><textarea id="bizAddress" data-bind="bizAddress" placeholder="Company Address"></textarea></div>
+                    <div style="display:flex; gap: 8px; margin-top: 10px;"><button id="btnQuickSaveProfile" class="btn-success" type="button" data-i18n="comp_save">💾 Save Profile</button></div>
+                </div>
+
+                <div id="sec-customer" class="editor-tab-content card">
+                    <div class="flex-between" style="margin-bottom:16px;">
+                        <h2 style="margin:0; border:none;" data-i18n="cust_title">Customer Details</h2>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="cust_name">Customer Name *</label><input type="text" id="custName" class="req-field" data-bind="custName" placeholder="Client Name"><span class="error-msg" data-i18n="err_req">Required field</span></div>
+                        <div class="form-group"><label data-i18n="cust_comp">Company</label><input type="text" id="custCompany" data-bind="custCompany" placeholder="Client Business"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label data-i18n="cust_email">Email</label><input type="email" id="custEmail" data-bind="custEmail"></div>
+                        <div class="form-group"><label data-i18n="cust_phone">Phone</label><input type="tel" id="custPhone" data-bind="custPhone"></div>
+                    </div>
+                    <div class="form-group"><label data-i18n="cust_address">Address</label><textarea id="custAddress" data-bind="custAddress" placeholder="Client Address"></textarea></div>
+                </div>
+
+                <div id="sec-items" class="editor-tab-content card">
+                    <h2 data-i18n="item_title">Tax, Discount & Items List</h2>
+                    <div class="form-row" style="background: var(--surface-hover); padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px;">
+                        <div class="form-group"><label style="color: var(--danger-color); font-weight:bold;" data-i18n="item_tax">Tax Rate (%)</label><input type="number" id="taxRate" placeholder="3" min="0" step="0.01" style="border-color: var(--danger-color)"></div>
+                        <div class="form-group"><label style="color: var(--success-color); font-weight:bold;" data-i18n="item_disc">Discount Value</label><input type="number" id="discountVal" placeholder="0" min="0" step="0.01" style="border-color: var(--success-color)"></div>
+                        <div class="form-group"><label data-i18n="item_ship">Shipping / Extras</label><input type="number" id="shippingCost" placeholder="0" min="0" step="0.01"></div>
+                    </div>
+                    <table class="items-editor-table">
+                        <thead><tr><th data-i18n="item_desc">Description *</th><th style="width:20%" data-i18n="item_qty">Qty *</th><th style="width:25%" data-i18n="item_price">Price *</th><th></th></tr></thead>
+                        <tbody id="itemsBody"></tbody>
+                    </table>
+                    <button id="btnAddItem" class="btn-secondary" style="width:100%;" type="button" data-i18n="item_add">+ Add Item</button>
+                </div>
+
+                <div id="sec-payment" class="editor-tab-content card">
+                    <h2 data-i18n="pay_title">Payment Methods & Setup</h2>
+                    <div class="form-group">
+                        <label data-i18n="pay_arch">Select Payment Method Architecture</label>
+                        <!-- ENHANCED MULTI PAYMENT INTERNATION DROP DOWN -->
+                        <select id="paymentArchType">
+                            <option value="bank">🏦 Direct International Bank Transfer</option>
+                            <option value="paypal">💳 PayPal Gateway Account</option>
+                            <option value="payoneer">🏹 Payoneer Business Card</option>
+                            <option value="stripe">🏁 Stripe Gateway Link</option>
+                            <option value="wise">✈️ TransferWise (Wise) Multicurrency</option>
+                        </select>
+                    </div>
+                    
+                    <div id="bankFields">
+                        <div class="form-group">
+                            <label data-i18n="pay_bank">Bank Setup Details</label>
+                            <div class="bank-grid">
+                                <input type="text" id="bankAccTitle" placeholder="Account Title">
+                                <input type="text" id="bankName" placeholder="Bank Name">
+                                <input type="text" id="bankAccNo" placeholder="Account Number / IBAN">
+                                <input type="text" id="bankSwift" placeholder="SWIFT / BIC Code">
+                                <input type="text" id="bankBranch" placeholder="Branch Name">
+                                <input type="text" id="bankCode" placeholder="Routing Transit Number">
+                                <input type="text" id="bankRef" placeholder="Payment Reference Identifier">
+                            </div>
+                            <textarea id="bankDetails" style="display:none;"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div id="stripeFields" style="display:none;">
+                        <div class="form-group">
+                            <label id="paymentUrlLabel">Gateway Link URL</label>
+                            <input type="url" id="payUrl" data-bind="payUrl" placeholder="https://buy.stripe.com/...">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group"><label data-i18n="pay_head">Supported Info Text</label><input type="text" id="payMethod" data-bind="payMethod" placeholder="Scan the QR code below to make a secure payment."></div>
+                    <div class="form-group">
+                        <label data-i18n="pay_qr">Payment Scan Code (QR)</label>
+                        <div class="qr-dropzone" onclick="document.getElementById('qrUpload').click()" aria-label="Upload QR Code">
+                            <span data-i18n="pay_qr_up">📁 Click to Upload Big Size QR Code Image</span>
+                            <input type="file" id="qrUpload" accept="image/*" style="display:none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-extras" class="editor-tab-content card">
+                    <div class="flex-between" style="border-bottom: 1px solid var(--border-color); margin-bottom: 16px; padding-bottom: 10px;"><h2 style="margin:0; border:none;" data-i18n="ext_title">Additional Parameters</h2></div>
+                    <div class="form-group">
+                        <label data-i18n="ext_notes">Notes (Press Enter for Auto-Numbering)</label>
+                        <button id="btnSaveNotesOnly" class="btn-success btn-inline-save" type="button">💾 Save</button>
+                        <textarea id="notes" placeholder="1. Thank you for choosing our services."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="ext_terms">Terms & Conditions (Press Enter for Auto-Numbering)</label>
+                        <button id="btnSaveTermsOnly" class="btn-success btn-inline-save" type="button">💾 Save</button>
+                        <textarea id="terms" placeholder="1. Payment should be settled within 14 business days."></textarea>
+                    </div>
+                </div>
+
+                <!-- COMPLETE SEARCHABLE WORKSPACE DASHBOARD PANEL -->
+                <div id="sec-history" class="editor-tab-content card">
+                    <h2 data-i18n="hist_title">Saved Workspace Logs</h2>
+                    
+                    <!-- Analytics Summary Grid -->
+                    <div class="dashboard-stats">
+                        <div class="stat-box"><div>Total Docs</div><div id="countAll">0</div></div>
+                        <div class="stat-box"><div>Paid</div><div id="countPaid" style="color:var(--success-color)">0</div></div>
+                        <div class="stat-box"><div>Pending</div><div id="countPending" style="color:#f59e0b">0</div></div>
+                        <div class="stat-box"><div>Sent</div><div id="countSent" style="color:#3b82f6">0</div></div>
+                    </div>
+
+                    <!-- Search Fields Controllers -->
+                    <div class="dashboard-filters">
+                        <input type="text" id="searchQuery" class="search-input" placeholder="🔍 Search customer or number...">
+                        <select id="filterStatus" class="filter-select">
+                            <option value="all">📝 All Statuses</option>
+                            <option value="Paid">🟢 Paid</option>
+                            <option value="Pending">🟡 Pending</option>
+                            <option value="Sent">🔵 Sent</option>
+                            <option value="Draft">⚪ Draft</option>
+                        </select>
+                    </div>
+                    
+                    <div id="historyLogsContainer" style="margin-top:5px; display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+
+                <div class="editor-spacer"></div>
+            </div>
+            
+            <div class="action-bar">
+                <div style="display:flex; width:100%; gap:8px;">
+                    <select id="invoiceStatusSelect" style="width:130px; font-weight:600; border-color:var(--border-color); background:var(--bg-color);">
+                        <option value="Draft">⚪ Draft</option>
+                        <option value="Sent">🔵 Sent</option>
+                        <option value="Pending">🟡 Pending</option>
+                        <option value="Paid">🟢 Paid</option>
+                    </select>
+                    <button id="btnSaveHistory" class="btn-success" type="button" style="flex:1;" data-i18n="act_save">💾 Save To Workspace</button>
+                </div>
+                <button id="btnPrint" class="btn-primary" type="button" data-i18n="act_print">🖨️ Print PDF</button>
+                <button id="btnReset" class="btn-danger" type="button" data-i18n="act_reset">↺ Reset</button>
+            </div>
+        </section>
+
+        <section class="preview-section" id="livePreviewSectionRoom">
+            <div id="receiptPaper" class="receipt-paper size-a4">
+                <div class="preview-inner">
+                    
+                    <div class="preview-header">
+                        <div class="preview-logo-area">
+                            <div class="preview-logo"><img id="prevLogo" src="" alt="Logo" style="display:none;"></div>
+                            <div class="preview-company-title">
+                                <h2 id="prevBizName">Company Name</h2>
+                                <p id="prevBizAddress">Address goes here</p>
+                            </div>
+                        </div>
+                        <div class="preview-header-right">
+                            <h1 id="prevType" data-i18n="prev_inv">Invoice</h1>
+                            <div class="inv-number"># <span id="prevNumber">INV-000123</span></div>
+                        </div>
+                    </div>
+
+                    <div class="preview-meta">
+                        <div class="preview-meta-box">
+                            <div class="meta-title" data-i18n="prev_from">
+                                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                From
+                            </div>
+                            <div class="meta-value-title" id="prevBizNameMeta">Business Name</div>
+                            <div class="meta-value-sub" id="prevBizAddressMeta" style="white-space: pre-wrap;"></div>
+                            <div class="meta-value-sub" id="prevBizContact" style="margin-top:4px; font-weight: 500;"></div>
+                        </div>
+                        <div class="preview-meta-box">
+                            <div class="meta-title" data-i18n="prev_bill">
+                                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                Bill To
+                            </div>
+                            <div class="meta-value-title" id="prevCustName">Customer Name</div>
+                            <div class="meta-value-sub" id="prevCustCompany" style="font-style:italic; font-weight: 600; margin-bottom: 2px;"></div>
+                            <div class="meta-value-sub" id="prevCustAddress" style="white-space: pre-wrap;"></div>
+                            <div class="meta-value-sub" id="prevCustContact" style="margin-top:4px; font-weight: 500;"></div>
+                        </div>
+                        <div class="preview-meta-box">
+                            <div class="meta-title" data-i18n="prev_date">
+                                <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                                Date
+                            </div>
+                            <div class="meta-value-title" id="prevDate">2026-07-06</div>
+                        </div>
+                    </div>
+
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th style="width:6%; text-align:center;">#</th>
+                                <th style="width:44%" data-i18n="tbl_desc">DESCRIPTION</th>
+                                <th style="width:15%; text-align:center;" data-i18n="tbl_qty">QTY</th>
+                                <th style="width:15%; text-align:right;" data-i18n="tbl_price">PRICE</th>
+                                <th style="width:20%; text-align:right;" data-i18n="tbl_amt">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prevItemsBody"></tbody>
+                    </table>
+
+                    <div class="totals-container">
+                        <div class="totals-box">
+                            <div class="preview-totals-row"><span data-i18n="tot_sub">Subtotal:</span><span id="prevSubtotal">0.00</span></div>
+                            <div class="preview-totals-row" id="rowDiscount" style="display:none; color:var(--success-color);"><span data-i18n="tot_disc">Discount:</span><span id="prevDiscount">-0.00</span></div>
+                            <div class="preview-totals-row" id="rowTax" style="display:none; color:var(--danger-color);"><span data-i18n="tot_tax">Tax:</span><span id="prevTax">0.00</span></div>
+                            <div class="preview-totals-row" id="rowShipping" style="display:none;"><span data-i18n="tot_ship">Shipping:</span><span id="prevShipping">0.00</span></div>
+                            <div class="preview-totals-row grand-total"><span data-i18n="tot_due">TOTAL DUE:</span><span id="prevTotal">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <div class="preview-footer-grid">
+                        <div class="info-card card-bank" id="wrapPayment">
+                            <h4 data-i18n="card_bank">
+                                <svg viewBox="0 0 24 24"><path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1L2 6v2h20V6z"/></svg>
+                                PAYMENT SETUP
+                            </h4>
+                            <div class="bank-details-text" id="prevBankDetails" style="white-space:pre-wrap;"></div>
+                            <a id="prevPayUrl" href="#" target="_blank" style="display:none; margin-top:8px; color:var(--receipt-theme-color); font-weight:600; text-decoration:none; word-break:break-all; font-size:0.75rem;"></a>
+                            <div style="margin-top:auto; padding-top:10px;">
+                                <div style="font-size:0.65rem; color:var(--receipt-theme-color); font-weight:700; margin-bottom:4px; text-transform:uppercase;" data-i18n="card_acc">Supported Networks</div>
+                                <div class="payment-icons">
+                                    <span style="color:#1434CB;">VISA</span><span style="color:#EB001B;">Mastercard</span><span style="color:#000;">Global wire</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-card card-qr" id="wrapQr" style="display:none;">
+                            <h4 data-i18n="card_scan">
+                                <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h3v2h-3zm-3 0h2v2h-2zm3 3h3v2h-3zm-3 0h2v2h-2zm3 3h3v2h-3zm-3 0h2v2h-2zm-3-3h2v2h-2zm0-3h2v2h-2zm0 6h2v2h-2z"/></svg>
+                                SCAN TO PAY
+                            </h4>
+                            <div class="qr-wrapper">
+                                <div style="font-size:0.65rem; color:#475569; font-weight:500; margin-bottom: 2px;" id="prevPayMethod">Scan QR code for quick payment</div>
+                                <img id="prevQr" src="" alt="QR">
+                                <div class="qr-subtext" data-i18n="card_sup">Supports banking apps & channels</div>
+                            </div>
+                        </div>
+
+                        <div class="info-card card-terms" id="wrapTerms" style="display:none;">
+                            <h4 data-i18n="card_terms">
+                                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                TERMS & CONDITIONS
+                            </h4>
+                            <div id="prevTermsList" class="notes-terms-list" style="color: #475569; font-weight: 500;"></div>
+                        </div>
+                    </div>
+
+                    <!-- RESTRUCTURED ALIGNED LAYOUT: NOTES SIDE-BY-SIDE WITH LARGE SIGNATURE -->
+                    <div class="footer-bottom-area">
+                        <div class="card-notes" id="wrapNotes" style="display:none;">
+                            <h4 data-i18n="card_notes">
+                                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                                NOTES
+                            </h4>
+                            <div id="prevNotesList" class="notes-terms-list"></div>
+                        </div>
+
+                        <div class="signature-section">
+                            <img id="prevSig" class="signature-img" src="" alt="Signature" style="display:none;">
+                            <div class="signature-line" data-i18n="foot_sig">Authorized Signature</div>
+                        </div>
+                    </div>
+                    
+                    <div class="footer-thank-you" data-i18n="foot_thx">Thank you for your business!</div>
+
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="modal-overlay" id="authModal">
+        <div class="modal-content">
+            <h2 id="authTitle" style="margin-bottom:20px;">Login</h2>
+            <button class="auth-btn google-btn"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18" alt="G"> Continue with Google</button>
+            <div style="text-align:center; color:#9ca3af; margin:15px 0;">or use email</div>
+            <input type="email" class="auth-input" placeholder="Email Address" id="authEmail">
+            <input type="password" class="auth-input" placeholder="Password" id="authPass">
+            <button class="btn-primary auth-btn" id="btnSubmitAuth">Continue</button>
+            <div class="auth-switch" id="authSwitchText">Don't have an account? <a onclick="app.showAuth('signup')">Sign up</a></div>
+            <button class="btn-danger close-modal text-sm" style="width:100%; margin-top:10px;">Cancel</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ==========================================
+// i18n Translation Dictionary (Foundation)
+// ==========================================
+const translations = {
+    en: { nav_home: "Home", nav_invoice: "Invoice Builder", nav_history: "History", nav_contact: "Contact", nav_login: "Login", nav_signup: "Sign Up", tab_editor: "📝 Editor", tab_preview: "👁️ Preview", side_doc: "Document", side_company: "Company", side_customer: "Customer", side_items: "Items & Tax", side_payment: "Payment", side_extras: "Extras", side_history: "History", act_save: "💾 Save To History", act_print: "🖨️ Print PDF", act_reset: "↺ Reset", tot_due: "TOTAL DUE:", card_bank: "BANK DETAILS", card_scan: "SCAN TO PAY", card_terms: "TERMS & CONDITIONS", card_notes: "NOTES", foot_sig: "Authorized Signature", foot_thx: "Thank you for your business!", err_req: "Required field" },
+    ur: { nav_home: "ہوم", nav_invoice: "انوائس بلڈر", nav_history: "ہسٹری", nav_contact: "رابطہ", nav_login: "لاگ ان", nav_signup: "سائن اپ", tab_editor: "📝 ایڈیٹر", tab_preview: "👁️ پیش نظارہ", side_doc: "دستاویز", side_company: "کمپنی", side_customer: "گاہک", side_items: "اشیاء اور ٹیکس", side_payment: "ادائیگی", side_extras: "اضافی معلومات", side_history: "ہسٹری", act_save: "💾 محفوظ کریں", act_print: "🖨️ پرنٹ", act_reset: "↺ ری سیٹ", tot_due: "کل رقم:", card_bank: "بینک کی تفصیلات", card_scan: "اسکین کریں", card_terms: "شرائط و ضوابط", card_notes: "نوٹس", foot_sig: "مجاز دستخط", foot_thx: "آپ کے کاروبار کا شکریہ!", err_req: "مطلوبہ فیلڈ" },
+    ar: { nav_home: "الرئيسية", nav_invoice: "صانع الفواتير", nav_history: "السجل", nav_contact: "اتصل بنا", nav_login: "تسجيل الدخول", nav_signup: "اشتراك", tab_editor: "📝 محرر", tab_preview: "👁️ معاينة", side_doc: "وثيقة", side_company: "شركة", side_customer: "عميل", side_items: "عناصر وضريبة", side_payment: "دفع", side_extras: "إضافات", side_history: "سجل", act_save: "💾 حفظ", act_print: "🖨️ طباعة", act_reset: "↺ إعادة تعيين", tot_due: "الإجمالي:", card_bank: "تفاصيل البنك", card_scan: "مسح للدفع", card_terms: "الشروط والأحكام", card_notes: "ملاحظات", foot_sig: "توقيع معتمد", foot_thx: "شكرا لتعاملكم معنا!", err_req: "حقل مطلوب" },
+};
+
+function setLanguage(lang) {
+    localStorage.setItem('rgp_lang', lang);
+    const isRtl = ['ur', 'ar'].includes(lang);
+    document.documentElement.setAttribute('dir', isRtl ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', lang);
+    
+    const dict = translations[lang] || translations['en'];
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if(dict[key]) {
+            if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = dict[key];
+            else el.innerHTML = el.innerHTML.replace(/^[^\<]+/, dict[key] + ' '); 
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    let state = { items: [{ id: Date.now(), desc: '', qty: '', price: '' }], logoData: null, sigData: null, qrData: null };
+    let historyLogs = JSON.parse(localStorage.getItem('rgp_history') || '[]');
+
+    // Initialize Language
+    const savedLang = localStorage.getItem('rgp_lang') || 'en';
+    document.getElementById('langSwitcher').value = savedLang;
+    setLanguage(savedLang);
+    document.getElementById('langSwitcher').addEventListener('change', (e) => setLanguage(e.target.value));
+
+    const els = {
+        binds: document.querySelectorAll('[data-bind]'),
+        itemsBody: document.getElementById('itemsBody'),
+        discountVal: document.getElementById('discountVal'),
+        taxRate: document.getElementById('taxRate'),
+        shippingCost: document.getElementById('shippingCost'),
+        currencySelect: document.getElementById('currencySelect'),
+        themeColorSelect: document.getElementById('themeColorSelect'),
+        paymentArchType: document.getElementById('paymentArchType'),
+        bankFields: document.getElementById('bankFields'),
+        stripeFields: document.getElementById('stripeFields'),
+        bankDetails: document.getElementById('bankDetails'), 
+        notes: document.getElementById('notes'),
+        terms: document.getElementById('terms'),
+        historyLogsContainer: document.getElementById('historyLogsContainer'),
+        searchQuery: document.getElementById('searchQuery'),
+        filterStatus: document.getElementById('filterStatus')
+    };
+
+    const savedExtras = JSON.parse(localStorage.getItem('rgp_extras_defaults') || '{}');
+    if(savedExtras.notes) els.notes.value = savedExtras.notes;
+    if(savedExtras.terms) els.terms.value = savedExtras.terms;
+
+    els.themeColorSelect.addEventListener('input', (e) => {
+        const selectedColor = e.target.value;
+        document.documentElement.style.setProperty('--receipt-theme-color', selectedColor);
+        document.documentElement.style.setProperty('--receipt-light-bg', selectedColor + '15');
+        updatePreview();
+    });
+
+    // MULTI PAYMENT METHOD DISPATCH ARCHITECTURE
+    els.paymentArchType.addEventListener('change', (e) => {
+        const val = e.target.value;
+        const label = document.getElementById('paymentUrlLabel');
+        const payUrlInput = document.getElementById('payUrl');
+        
+        if(val === 'bank') {
+            els.bankFields.style.display = 'block'; 
+            els.stripeFields.style.display = 'none';
+        } else {
+            els.bankFields.style.display = 'none'; 
+            els.stripeFields.style.display = 'block';
+            if (val === 'stripe') { label.innerText = 'Stripe Payment URL'; payUrlInput.placeholder = 'https://buy.stripe.com/...'; }
+            if (val === 'paypal') { label.innerText = 'PayPal Me Checkout Link'; payUrlInput.placeholder = 'https://paypal.me/...'; }
+            if (val === 'payoneer') { label.innerText = 'Payoneer Receiving Account Request Link'; payUrlInput.placeholder = 'https://login.payoneer.com/...'; }
+            if (val === 'wise') { label.innerText = 'Wise Payment Request Asset Link'; payUrlInput.placeholder = 'https://wise.com/pay/...'; }
+        }
+        updatePreview();
+    });
+
+    const saveLayoutConfig = () => {
+        localStorage.setItem('rgp_extras_defaults', JSON.stringify({ notes: els.notes.value, terms: els.terms.value }));
+        alert("Saved successfully!");
+    };
+    document.getElementById('btnSaveNotesOnly').addEventListener('click', saveLayoutConfig);
+    document.getElementById('btnSaveTermsOnly').addEventListener('click', saveLayoutConfig);
+
+    // Auto-Numbering Logic for Notes and Terms
+    const autoNumber = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const el = e.target;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const val = el.value;
+            
+            const linesBeforeCaret = val.substring(0, start).split('\n');
+            const currentLine = linesBeforeCaret[linesBeforeCaret.length - 1];
+            const match = currentLine.match(/^(\d+)\.\s/);
+            
+            let insertText = '\n';
+            if (match) {
+                const nextNum = parseInt(match[1], 10) + 1;
+                insertText += `${nextNum}. `;
+            } else {
+                // If it doesn't match any number but line has text, check length to safely assign next step
+                const nonNumberedMatch = val.trim().split('\n');
+                const nextCountIndex = nonNumberedMatch.length + 1;
+                insertText += `${nextCountIndex}. `;
+            }
+
+            el.value = val.substring(0, start) + insertText + val.substring(end);
+            el.selectionStart = el.selectionEnd = start + insertText.length;
+            updatePreview();
+        }
+    };
+    els.notes.addEventListener('keydown', autoNumber);
+    els.terms.addEventListener('keydown', autoNumber);
+
+    // Structured Bank Inputs mapped to legacy textarea string
+    const bankInputs = document.querySelectorAll('.bank-grid input');
+    const updateBankString = () => {
+        let str = '';
+        if(document.getElementById('bankAccTitle').value) str += `Account Title: ${document.getElementById('bankAccTitle').value}\n`;
+        if(document.getElementById('bankName').value) str += `Bank Name: ${document.getElementById('bankName').value}\n`;
+        if(document.getElementById('bankAccNo').value) str += `Account No: ${document.getElementById('bankAccNo').value}\n`;
+        if(document.getElementById('bankSwift').value) str += `SWIFT: ${document.getElementById('bankSwift').value}\n`;
+        if(document.getElementById('bankBranch').value) str += `Branch: ${document.getElementById('bankBranch').value}\n`;
+        if(document.getElementById('bankCode').value) str += `Routing: ${document.getElementById('bankCode').value}\n`;
+        if(document.getElementById('bankRef').value) str += `Ref: ${document.getElementById('bankRef').value}\n`;
+        els.bankDetails.value = str.trim();
+        updatePreview();
+    };
+    bankInputs.forEach(input => input.addEventListener('input', updateBankString));
+
+    // STICKER SIDEBAR CONTROL TABS
+    document.querySelectorAll('.sticker-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.editor-tab-content').forEach(c => c.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            document.getElementById(e.currentTarget.getAttribute('data-target')).classList.add('active');
+        });
+    });
+
+    // HIGH VISIBILITY MODE TABS SYNC LOGIC
+    const switchToEditorModeView = () => {
+        document.getElementById('navModeEditor').classList.add('active-mode');
+        document.getElementById('navModePreview').classList.remove('active-mode');
+        document.getElementById('tabEditor').classList.add('active'); 
+        document.getElementById('tabPreview').classList.remove('active');
+        document.querySelector('.editor-section').classList.add('active-tab'); 
+        document.querySelector('.preview-section').classList.remove('active-tab');
+    };
+
+    const switchToPreviewModeView = () => {
+        if(validateForm()) {
+            document.getElementById('navModePreview').classList.add('active-mode');
+            document.getElementById('navModeEditor').classList.remove('active-mode');
+            document.getElementById('tabPreview').classList.add('active'); 
+            document.getElementById('tabEditor').classList.remove('active');
+            document.querySelector('.preview-section').classList.add('active-tab'); 
+            document.querySelector('.editor-section').classList.remove('active-tab');
+            updatePreview();
+        }
+    };
+
+    document.getElementById('navModeEditor').addEventListener('click', switchToEditorModeView);
+    document.getElementById('navModePreview').addEventListener('click', switchToPreviewModeView);
+    document.getElementById('tabEditor').addEventListener('click', switchToEditorModeView);
+    document.getElementById('tabPreview').addEventListener('click', switchToPreviewModeView);
+
+    const formatMoney = (amount) => {
+        const symbol = els.currencySelect.value.split('|')[1] || '';
+        return `${symbol} ${new Intl.NumberFormat(document.documentElement.lang || 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount || 0)}`;
+    };
+
+    const renderItemsEditor = () => {
+        els.itemsBody.innerHTML = '';
+        state.items.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="item-desc req-field" data-idx="${index}" value="${item.desc}" placeholder="Item Description"></td>
+                <td><input type="number" class="item-qty req-field" data-idx="${index}" value="${item.qty}" placeholder="0" min="0"></td>
+                <td><input type="number" class="item-price req-field" data-idx="${index}" value="${item.price}" placeholder="0" min="0"></td>
+                <td style="text-align:right;"><button class="btn-danger btn-remove-item" data-idx="${index}" aria-label="Remove Item">✕</button></td>
+            `;
+            els.itemsBody.appendChild(tr);
+        });
+        document.querySelectorAll('.item-desc').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].desc = e.target.value; validateField(e.target); updatePreview(); }));
+        document.querySelectorAll('.item-qty').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].qty = e.target.value; validateField(e.target); updatePreview(); }));
+        document.querySelectorAll('.item-price').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].price = e.target.value; validateField(e.target); updatePreview(); }));
+        document.querySelectorAll('.btn-remove-item').forEach(el => el.addEventListener('click', (e) => {
+            if(state.items.length > 1) { state.items.splice(e.target.dataset.idx, 1); renderItemsEditor(); updatePreview(); }
+        }));
+    };
+
+    document.getElementById('btnAddItem').addEventListener('click', () => { state.items.push({ id: Date.now(), desc: '', qty: '', price: '' }); renderItemsEditor(); });
+
+    const renderList = (textId, listId, wrapId) => {
+        const text = document.getElementById(textId).value;
+        const wrap = document.getElementById(wrapId);
+        const list = document.getElementById(listId);
+        if (text.trim()) {
+            wrap.style.display = 'block';
+            list.innerHTML = text.replace(/\n/g, '<br>');
+        } else {
+            wrap.style.display = 'none';
+        }
+    };
+
+    const updatePreview = () => {
+        els.binds.forEach(el => {
+            const key = el.getAttribute('data-bind');
+            const targets = document.querySelectorAll(`[id^="prev${key.charAt(0).toUpperCase() + key.slice(1)}"]`);
+            targets.forEach(target => {
+                if(el.tagName === 'TEXTAREA') target.textContent = el.value;
+                else target.innerHTML = el.value;
+            });
+        });
+
+        document.getElementById('prevBizContact').innerHTML = [document.getElementById('bizPhone').value, document.getElementById('bizEmail').value].filter(Boolean).join(' | ');
+        document.getElementById('prevCustContact').innerHTML = [document.getElementById('custPhone').value, document.getElementById('custEmail').value].filter(Boolean).join(' | ');
+
+        renderList('notes', 'prevNotesList', 'wrapNotes');
+        renderList('terms', 'prevTermsList', 'wrapTerms');
+        
+        const payUrl = document.getElementById('payUrl').value;
+        const payMethod = document.getElementById('payMethod').value;
+        const currentArch = els.paymentArchType.value;
+        
+        document.getElementById('prevPayMethod').textContent = payMethod;
+
+        if(currentArch === 'bank') {
+            const bankLines = els.bankDetails.value.split('\n').map(line => {
+                if(line.includes(':')) {
+                    const parts = line.split(':');
+                    return `<strong>${parts[0]}:</strong>${parts.slice(1).join(':')}`;
+                }
+                return line;
+            });
+            document.getElementById('prevBankDetails').innerHTML = bankLines.join('<br>');
+            document.getElementById('prevPayUrl').style.display = 'none';
+        } else {
+            // RENDER INTERNATION DIGITAL GATEWAYS AS PLAIN STRUCT
+            let gatewayTitle = currentArch.toUpperCase() + ' Direct Portal';
+            document.getElementById('prevBankDetails').innerHTML = `<strong>Method:</strong> ${gatewayTitle}<br><strong>Status:</strong> Secured Integration Active`;
+            if(payUrl) {
+                document.getElementById('prevPayUrl').href = payUrl;
+                document.getElementById('prevPayUrl').textContent = `Pay Securely Via ${currentArch.toUpperCase()} Gateway Link ↗`;
+                document.getElementById('prevPayUrl').style.display = 'block';
+            } else {
+                document.getElementById('prevPayUrl').style.display = 'none';
+            }
+        }
+
+        if(state.logoData) { document.getElementById('prevLogo').src = state.logoData; document.getElementById('prevLogo').style.display = 'block'; }
+        if(state.sigData) { document.getElementById('prevSig').src = state.sigData; document.getElementById('prevSig').style.display = 'block'; }
+        
+        const qrWrap = document.getElementById('wrapQr');
+        if(state.qrData) { document.getElementById('prevQr').src = state.qrData; qrWrap.style.display = 'flex'; } 
+        else { qrWrap.style.display = 'none'; }
+
+        const prevItemsBody = document.getElementById('prevItemsBody');
+        prevItemsBody.innerHTML = '';
+        let subtotal = 0, indexCounter = 1;
+
+        state.items.forEach((item) => {
+            let p = parseFloat(item.price) || 0, q = parseFloat(item.qty) || 0;
+            if(!item.desc && p === 0) return;
+            let t = p * q; subtotal += t;
+            prevItemsBody.innerHTML += `<tr><td style="text-align:center; color:#64748b; font-weight:600;">${indexCounter}</td><td style="font-weight:500;">${item.desc}</td><td style="text-align:center;">${q||''}</td><td style="text-align:right;">${formatMoney(p)}</td><td style="text-align:right; font-weight:700; color:#0f172a;">${formatMoney(t)}</td></tr>`;
+            indexCounter++;
+        });
+
+        let d = parseFloat(els.discountVal.value) || 0, tR = parseFloat(els.taxRate.value) || 0, s = parseFloat(els.shippingCost.value) || 0;
+        let taxAmt = (subtotal - d) * (tR / 100);
+        let gTotal = (subtotal - d) + taxAmt + s;
+
+        document.getElementById('prevSubtotal').textContent = formatMoney(subtotal);
+        document.getElementById('rowDiscount').style.display = d > 0 ? 'flex' : 'none';
+        if(d>0) document.getElementById('prevDiscount').textContent = `-${formatMoney(d)}`;
+        
+        document.getElementById('rowTax').style.display = taxAmt > 0 ? 'flex' : 'none';
+        if(taxAmt>0) document.getElementById('prevTax').textContent = formatMoney(taxAmt);
+        
+        document.getElementById('rowShipping').style.display = s > 0 ? 'flex' : 'none';
+        if(s>0) document.getElementById('prevShipping').textContent = formatMoney(s);
+
+        document.getElementById('prevTotal').textContent = formatMoney(gTotal);
+    };
+
+    // Validation System
+    const validateField = (el) => {
+        const errorSpan = el.nextElementSibling?.classList.contains('error-msg') ? el.nextElementSibling : null;
+        if(el.value.trim() === '') {
+            el.classList.add('error');
+            if(errorSpan) errorSpan.style.display = 'block';
+            return false;
+        } else {
+            el.classList.remove('error');
+            if(errorSpan) errorSpan.style.display = 'none';
+            return true;
+        }
+    };
+
+    const validateForm = () => {
+        let isValid = true;
+        document.querySelectorAll('.req-field').forEach(el => {
+            if(!validateField(el)) isValid = false;
+        });
+        if(!isValid) alert("Please fill in all required fields (Business Name, Customer Name, Item Details).");
+        return isValid;
+    };
+
+    document.querySelectorAll('.req-field').forEach(el => el.addEventListener('blur', (e) => validateField(e.target)));
+
+    document.querySelector('.editor-forms').addEventListener('input', updatePreview);
+    els.discountVal.addEventListener('input', updatePreview);
+    els.taxRate.addEventListener('input', updatePreview);
+    els.shippingCost.addEventListener('input', updatePreview);
+    els.currencySelect.addEventListener('change', updatePreview);
+    
+    const handleFile = (id, stateKey) => {
+        document.getElementById(id).addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => { state[stateKey] = ev.target.result; updatePreview(); };
+                reader.readAsDataURL(file);
+            }
+        });
+    };
+    handleFile('logoUpload', 'logoData'); handleFile('sigUpload', 'sigData'); handleFile('qrUpload', 'qrData');
+
+    document.getElementById('btnAutoNum').addEventListener('click', () => { document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*1000000); updatePreview(); });
+    document.getElementById('btnPrint').addEventListener('click', () => { if(validateForm()){ updatePreview(); window.print(); } });
+
+    // DASHBOARD SEARCH ENGINE AND STATUS FILTER ENGINE
+    const renderHistoryLogs = () => {
+        els.historyLogsContainer.innerHTML = '';
+        
+        const query = els.searchQuery.value.toLowerCase().trim();
+        const statusFilter = els.filterStatus.value;
+        
+        // Calculate Live Operational Analytics counters
+        let totalCount = historyLogs.length;
+        let paidCount = historyLogs.filter(h => h.status === 'Paid').length;
+        let pendingCount = historyLogs.filter(h => h.status === 'Pending').length;
+        let sentCount = historyLogs.filter(h => h.status === 'Sent').length;
+        
+        document.getElementById('countAll').innerText = totalCount;
+        document.getElementById('countPaid').innerText = paidCount;
+        document.getElementById('countPending').innerText = pendingCount;
+        document.getElementById('countSent').innerText = sentCount;
+
+        // Apply filters
+        const filteredLogs = historyLogs.filter(h => {
+            const matchesSearch = (h.custName || '').toLowerCase().includes(query) || (h.number || '').toLowerCase().includes(query);
+            const matchesStatus = statusFilter === 'all' || (h.status || 'Draft') === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+
+        if(filteredLogs.length === 0) { 
+            els.historyLogsContainer.innerHTML = `<p class="text-sm" style="color:var(--text-secondary); text-align:center; padding:20px;">No matching records found in this workspace filter view.</p>`; 
+            return; 
+        }
+
+        filteredLogs.forEach((h, idx) => {
+            // Find true real index relative to global database list array
+            const globalIndex = historyLogs.findIndex(item => item.number === h.number && item.date === h.date);
+            
+            let badgeColor = 'var(--text-secondary)';
+            if(h.status === 'Paid') badgeColor = 'var(--success-color)';
+            if(h.status === 'Pending') badgeColor = '#f59e0b';
+            if(h.status === 'Sent') badgeColor = '#3b82f6';
+
+            els.historyLogsContainer.innerHTML += `
+                <div class="list-item" style="border-left: 4px solid ${badgeColor}">
+                    <div>
+                        <strong>${h.custName || 'Unknown Customer'}</strong> 
+                        <span style="font-size:0.7rem; background:${badgeColor}20; color:${badgeColor}; padding:2px 6px; border-radius:4px; font-weight:bold; margin-left:6px;">${h.status || 'Draft'}</span>
+                        <br><small>${h.number} | ${h.date} | Total: ${h.totalVal}</small>
+                    </div>
+                    <div>
+                        <button class="btn-secondary text-sm" onclick="app.loadHistoryItem(${globalIndex})">Load</button> 
+                        <button class="btn-danger text-sm" onclick="app.deleteHistoryItem(${globalIndex})">Del</button>
+                    </div>
+                </div>`;
+        });
+    };
+
+    els.searchQuery.addEventListener('input', renderHistoryLogs);
+    els.filterStatus.addEventListener('change', renderHistoryLogs);
+
+    document.getElementById('btnSaveHistory').addEventListener('click', () => {
+        if(!validateForm()) return;
+        const currentSelectedStatus = document.getElementById('invoiceStatusSelect').value;
+        
+        historyLogs.push({
+            custName: document.getElementById('custName').value, custCompany: document.getElementById('custCompany').value, custEmail: document.getElementById('custEmail').value, custPhone: document.getElementById('custPhone').value, custAddress: document.getElementById('custAddress').value,
+            number: document.getElementById('receiptNumber').value, date: document.getElementById('issueDate').value, type: document.getElementById('receiptType').value, totalVal: document.getElementById('prevTotal').textContent,
+            items: JSON.parse(JSON.stringify(state.items)), discount: els.discountVal.value, tax: els.taxRate.value, shipping: els.shippingCost.value, themeColor: els.themeColorSelect.value,
+            payArch: els.paymentArchType.value, bank: els.bankDetails.value, stripe: document.getElementById('payUrl').value, payMethodText: document.getElementById('payMethod').value,
+            status: currentSelectedStatus
+        });
+        localStorage.setItem('rgp_history', JSON.stringify(historyLogs)); 
+        renderHistoryLogs(); 
+        alert("Saved to Workspace Dashboard Successfully.");
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+        if(confirm("Reset entire form?")) {
+            document.querySelectorAll('input:not([type="file"]):not(#themeColorSelect), textarea').forEach(el => el.value = '');
+            document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+            document.querySelectorAll('.error-msg').forEach(el => el.style.display = 'none');
+            state.items = [{ id: Date.now(), desc: '', qty: '', price: '' }];
+            state.logoData = null; state.sigData = null; state.qrData = null;
+            document.getElementById('prevLogo').style.display = 'none'; document.getElementById('prevSig').style.display = 'none';
+            document.getElementById('issueDate').valueAsDate = new Date();
+            renderItemsEditor(); updatePreview();
+        }
+    });
+
+    window.app = {
+        loadHistoryItem: (i) => {
+            const h = historyLogs[i];
+            ['custName', 'custCompany', 'custEmail', 'custPhone', 'custAddress', 'receiptNumber', 'issueDate'].forEach(id => document.getElementById(id).value = h[id] || '');
+            document.getElementById('receiptType').value = h.type || 'Invoice'; els.discountVal.value = h.discount || ''; els.taxRate.value = h.tax || ''; els.shippingCost.value = h.shipping || '';
+            if(h.themeColor) { els.themeColorSelect.value = h.themeColor; document.documentElement.style.setProperty('--receipt-theme-color', h.themeColor); document.documentElement.style.setProperty('--receipt-light-bg', h.themeColor + '15'); }
+            if(h.payArch) els.paymentArchType.value = h.payArch; 
+            if(h.status) document.getElementById('invoiceStatusSelect').value = h.status;
+            
+            if(h.bank) {
+                els.bankDetails.value = h.bank; 
+                const bLines = h.bank.split('\n');
+                bLines.forEach(l => {
+                    if(l.includes('Account Title:')) document.getElementById('bankAccTitle').value = l.split(':')[1].trim();
+                    if(l.includes('Bank Name:')) document.getElementById('bankName').value = l.split(':')[1].trim();
+                    if(l.includes('Account No:')) document.getElementById('bankAccNo').value = l.split(':')[1].trim();
+                    if(l.includes('SWIFT:')) document.getElementById('bankSwift').value = l.split(':')[1].trim();
+                    if(l.includes('Branch:')) document.getElementById('bankBranch').value = l.split(':')[1].trim();
+                    if(l.includes('Routing:')) document.getElementById('bankCode').value = l.split(':')[1].trim();
+                    if(l.includes('Ref:')) document.getElementById('bankRef').value = l.split(':')[1].trim();
+                });
+            }
+            if(h.stripe) document.getElementById('payUrl').value = h.stripe; if(h.payMethodText) document.getElementById('payMethod').value = h.payMethodText;
+            
+            els.paymentArchType.dispatchEvent(new Event('change')); state.items = h.items || [{ id: Date.now(), desc: '', qty: '', price: '' }];
+            renderItemsEditor(); updatePreview(); alert("Invoice Workspace Record Restored!");
+        },
+        deleteHistoryItem: (i) => { if(confirm("Delete this log permanently?")) { historyLogs.splice(i, 1); localStorage.setItem('rgp_history', JSON.stringify(historyLogs)); renderHistoryLogs(); } },
+        showAuth: (type) => {
+            const modal = document.getElementById('authModal');
+            document.getElementById('authTitle').innerText = type === 'login' ? 'Login' : 'Create Account';
+            document.getElementById('btnSubmitAuth').innerText = type === 'login' ? 'Login' : 'Sign Up';
+            document.getElementById('authSwitchText').innerHTML = type === 'login' 
+                ? `Don't have an account? <a onclick="app.showAuth('signup')">Sign up</a>` 
+                : `Already have an account? <a onclick="app.showAuth('login')">Login</a>`;
+            modal.classList.add('active');
+        }
+    };
+    
+    document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', (e) => e.target.closest('.modal-overlay').classList.remove('active')));
+    document.getElementById('issueDate').valueAsDate = new Date(); document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*100000);
+    renderItemsEditor(); renderHistoryLogs(); updatePreview();
+});
+</script>
+</body>
+</html>
