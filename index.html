@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Generator Pro | Premium SaaS Receipt Builder</title>
+    
+    <style>
+        /* ==========================================================================
+           CSS VARIABLES & RESET
+           ========================================================================== */
+        :root {
+            --bg-color: #f5f5f7;
+            --surface-color: #ffffff;
+            --surface-hover: #f9f9fa;
+            --text-primary: #1d1d1f;
+            --text-secondary: #86868b;
+            --primary-color: #1a56db; 
+            --primary-hover: #1e429f;
+            --danger-color: #e02424;
+            --success-color: #16a34a;
+            --border-color: #d2d2d7;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+            --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            --focus-ring: 0 0 0 3px rgba(26, 86, 219, 0.3);
+            
+            /* Print Theme Variables Dynamically Managed */
+            --receipt-theme-color: #1a56db; 
+            --receipt-light-bg: #eff6ff;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #000000;
+            --surface-color: #1c1c1e;
+            --surface-hover: #2c2c2e;
+            --text-primary: #f5f5f7;
+            --text-secondary: #a1a1a6;
+            --border-color: #38383a;
+            --shadow-sm: 0 2px 8px rgba(255, 255, 255, 0.04);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-primary); line-height: 1.5; transition: var(--transition); }
+
+        /* ==========================================================================
+           LAYOUT & SIDEBAR TABS (KEPT UNTOUCHED AS REQUESTED)
+           ========================================================================== */
+        .app-container { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .editor-section { flex: 1; max-width: 700px; display: flex; background: var(--surface-color); border-right: 1px solid var(--border-color); z-index: 10; overflow: hidden;}
+        .editor-sidebar { width: 140px; background: var(--bg-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; overflow-y: auto; padding: 10px 0;}
+        .editor-forms { flex: 1; padding: 24px; overflow-y: auto; }
+        
+        .sticker-btn {
+            background: transparent; border: none; padding: 15px 10px; margin: 5px 10px; text-align: left;
+            border-radius: 8px; font-weight: 600; font-size: 0.9rem; color: var(--text-secondary);
+            cursor: pointer; transition: var(--transition); display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .sticker-btn:hover { background: var(--surface-color); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+        .sticker-btn.active { background: var(--surface-color); color: var(--primary-color); box-shadow: var(--shadow-md); border-left: 4px solid var(--primary-color); }
+        .sticker-btn span { font-size: 1.5rem; }
+
+        .editor-tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .editor-tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .preview-section { flex: 1.5; overflow-y: auto; padding: 40px; display: flex; justify-content: center; align-items: flex-start; background: var(--bg-color); }
+
+        h1, h2, h3 { font-weight: 600; color: var(--text-primary); }
+        h2 { font-size: 1.25rem; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;}
+        
+        .form-group { margin-bottom: 16px; position: relative; }
+        .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        
+        label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; font-size: 0.95rem;
+            background: var(--bg-color); border: 1px solid var(--border-color);
+            border-radius: 8px; color: var(--text-primary); transition: var(--transition);
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: var(--focus-ring); }
+        textarea { resize: vertical; min-height: 70px; max-height: 150px; }
+
+        .greenish-box { background-color: var(--surface-hover); border: 1px solid var(--border-color); border-left: 4px solid var(--primary-color); }
+        .card { background: var(--surface-color); padding: 5px; margin-bottom: 24px; }
+
+        /* ==========================================================================
+           BUTTONS & ACTIONS
+           ========================================================================== */
+        button { cursor: pointer; font-weight: 500; border-radius: 8px; border: none; padding: 10px 16px; font-size: 0.95rem; transition: var(--transition); }
+        .btn-primary { background: var(--primary-color); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--surface-hover); }
+        .btn-danger { background: transparent; color: var(--danger-color); border: 1px solid var(--danger-color); }
+        .btn-danger:hover { background: var(--danger-color); color: #fff; }
+        .btn-success { background: var(--success-color); color: #fff; }
+        .btn-success:hover { opacity: 0.9; }
+        .btn-inline-save { position: absolute; right: 0; top: -5px; padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; }
+        
+        .action-bar {
+            position: fixed; bottom: 0; left: 0; width: 700px;
+            background: var(--surface-color); border-top: 1px solid var(--border-color);
+            padding: 16px 24px; display: flex; gap: 10px; z-index: 20; box-shadow: 0 -4px 16px rgba(0,0,0,0.05);
+        }
+        .action-bar button { flex: 1; padding: 12px 10px; }
+        .editor-spacer { height: 80px; }
+
+        .qr-dropzone {
+            border: 2px dashed var(--border-color); border-radius: 12px; padding: 25px;
+            text-align: center; background: var(--surface-hover); cursor: pointer; transition: var(--transition);
+        }
+        .qr-dropzone:hover { border-color: var(--primary-color); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content { background: var(--surface-color); padding: 24px; border-radius: var(--radius-lg); width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 10px; background: var(--bg-color); }
+        
+        .items-editor-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .items-editor-table th { text-align: left; font-size: 0.8rem; color: var(--text-secondary); padding-bottom: 8px; }
+        .items-editor-table td { padding: 4px; }
+
+        /* ==========================================================================
+           PREVIEW STYLES (UPDATED FOR SCREENSHOT MATCH & 1-PAGE GUARANTEE)
+           ========================================================================== */
+        .receipt-paper { 
+            background: #ffffff; color: #333333; box-shadow: var(--shadow-md); margin: 0 auto; 
+            position: relative; overflow: hidden; display: flex; flex-direction: column; border-radius: 8px;
+            font-size: 0.85rem; /* Base font reduction for 1-page fit */
+        }
+        .size-a4 { width: 210mm; min-height: 297mm; }
+        
+        /* Tighter padding to ensure 8-10 items fit perfectly */
+        .preview-inner { padding: 25px 30px 40px 30px; flex: 1; display: flex; flex-direction: column; }
+        
+        .preview-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .preview-logo-area { display: flex; align-items: center; gap: 15px; }
+        .preview-logo { width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .preview-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .preview-company-title h2 { margin: 0; font-size: 1.4rem; color: #000; border: none; padding: 0; font-weight: 700; text-transform: uppercase; }
+        .preview-company-title p { margin: 0; font-size: 0.8rem; color: #666; }
+        
+        .preview-header-right { text-align: right; }
+        .preview-header-right h1 { color: var(--receipt-theme-color); font-size: 2rem; margin-bottom: 2px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .preview-header-right .inv-number { font-weight: bold; font-size: 0.95rem; color: var(--receipt-theme-color); }
+
+        /* 3 Column Meta Grid Setup */
+        .preview-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .preview-meta-box { border: 1px solid #eff0f2; border-radius: 8px; padding: 12px; background: #fafafa; }
+        .meta-title { 
+            display: flex; align-items: center; gap: 8px; 
+            color: #000; font-weight: 700; font-size: 0.85rem; 
+            margin-bottom: 10px; 
+        }
+        .meta-title svg { width: 14px; height: 14px; fill: var(--receipt-theme-color); }
+        .meta-value-title { font-weight: bold; font-size: 0.9rem; color: var(--receipt-theme-color); margin-bottom: 4px; }
+        .meta-value-sub { font-size: 0.75rem; color: #555; line-height: 1.4; }
+
+        /* Table Styling matching screenshot */
+        .preview-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; border-radius: 6px; overflow: hidden; }
+        .preview-table th { background: var(--receipt-theme-color); color: #fff; padding: 8px 12px; text-align: left; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .preview-table td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.8rem; color: #333; }
+        .preview-table tbody tr:nth-child(even) { background-color: #fafbfc; }
+
+        /* Totals Area */
+        .totals-container { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        .totals-box { width: 320px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .preview-totals-row { display: flex; justify-content: space-between; padding: 8px 15px; font-size: 0.85rem; color: #333; border-bottom: 1px solid #f0f0f0; }
+        .preview-totals-row:last-child { border-bottom: none; }
+        .preview-totals-row.grand-total { font-weight: bold; font-size: 1rem; background: var(--receipt-theme-color); color: #fff; border-left: none; }
+        
+        /* Bottom Cards Grid */
+        .info-cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; }
+        .info-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; }
+        .info-card h4 { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 0.75rem; font-weight: 700; color: var(--receipt-theme-color); text-transform: uppercase; border-bottom: 1px solid var(--receipt-theme-color); padding-bottom: 5px; }
+        .info-card h4 svg { width: 16px; height: 16px; fill: var(--receipt-theme-color); }
+        
+        /* Specific Card Adjustments */
+        .bank-details-text { font-size: 0.75rem; line-height: 1.6; color: #333; }
+        .bank-details-text strong { display: block; color: var(--receipt-theme-color); margin-top: 4px; font-size: 0.7rem; }
+        
+        .payment-icons { display: flex; gap: 6px; margin-top: auto; padding-top: 10px; }
+        .payment-icons span { background: #fff; border: 1px solid #ddd; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; font-weight: bold; }
+
+        .qr-wrapper { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
+        .qr-wrapper img { max-width: 100px; max-height: 100px; object-fit: contain; border: 4px solid var(--receipt-theme-color); border-radius: 8px; padding: 2px; }
+        .qr-subtext { font-size: 0.7rem; color: #666; text-align: center; margin-top: auto; padding-top: 10px; }
+
+        .notes-terms-list { margin-left: 15px; color: #444; font-size: 0.75rem; padding-left: 5px; }
+        .notes-terms-list li { margin-bottom: 4px; padding-left: 4px; }
+
+        /* Signature area inside card */
+        .signature-area { text-align: center; position: relative; width: 100%; margin-top: 15px; }
+        .signature-img { max-width: 100%; height: 50px; object-fit: contain; margin-bottom: 5px; }
+        .signature-line { border-top: 1px solid #000; padding-top: 4px; font-weight: bold; font-size: 0.75rem; color: #333; }
+
+        .footer-thank-you { text-align: center; color: var(--receipt-theme-color); font-weight: 500; font-size: 0.85rem; margin-top: auto; padding-top: 15px; }
+
+        /* RESPONSIVE & PRINT */
+        .mobile-tabs { display: none; }
+        @media (max-width: 1024px) {
+            .mobile-tabs { display: flex; width: 100%; background: var(--surface-color); position: sticky; top: 0; z-index: 50; }
+            .tab-btn { flex: 1; padding: 14px; background: none; border: none; font-weight: bold; color: var(--text-secondary); }
+            .tab-btn.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+            .main-content { flex-direction: column; }
+            .editor-section { max-width: 100%; height: auto; flex-direction: column; display: none; }
+            .editor-section.active-tab { display: flex; }
+            .preview-section { display: none; padding: 10px; }
+            .preview-section.active-tab { display: flex; }
+            .editor-sidebar { width: 100%; flex-direction: row; border-right: none; border-bottom: 1px solid var(--border-color); padding: 5px; }
+            .sticker-btn { flex: 0 0 auto; padding: 10px; margin: 0 5px; font-size: 0.8rem; }
+            .action-bar { position: static; width: 100%; flex-wrap: wrap; }
+            .receipt-paper { width: 100% !important; border-radius: 0; }
+            .preview-meta { grid-template-columns: 1fr; }
+            .info-cards-grid { grid-template-columns: 1fr; }
+        }
+        @media print {
+            body { background: #fff; }
+            .mobile-tabs, .editor-section, .action-bar, .modal-overlay { display: none !important; }
+            .preview-section { padding: 0; display: block; width: 100%; }
+            .receipt-paper { box-shadow: none; width: 100% !important; padding: 0; margin: 0; border-radius: 0; border: none; }
+            .preview-inner { padding: 15px !important; } /* Tighter print padding */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            @page { margin: 0; size: auto; }
+        }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .text-sm { font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="mobile-tabs">
+        <button id="tabEditor" class="tab-btn active">📝 Editor</button>
+        <button id="tabPreview" class="tab-btn">👁️ Preview</button>
+    </div>
+    
+    <div class="main-content">
+        <!-- ================= EDITOR SECTION ================= -->
+        <section class="editor-section active-tab">
+            <div class="editor-sidebar">
+                <button class="sticker-btn active" data-target="sec-doc"><span>📄</span> Document</button>
+                <button class="sticker-btn" data-target="sec-company"><span>🏢</span> Company</button>
+                <button class="sticker-btn" data-target="sec-customer"><span>👤</span> Customer</button>
+                <button class="sticker-btn" data-target="sec-items"><span>🛍️</span> Items & Tax</button>
+                <button class="sticker-btn" data-target="sec-payment"><span>💳</span> Payment</button>
+                <button class="sticker-btn" data-target="sec-extras"><span>📝</span> Extras</button>
+                <button class="sticker-btn" data-target="sec-history"><span>📜</span> History</button>
+            </div>
+
+            <div class="editor-forms">
+                <div id="sec-doc" class="editor-tab-content active card">
+                    <h2>Document Settings</h2>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Overall Print Theme Color</label>
+                            <input type="color" id="themeColorSelect" value="#1a56db" style="height:43px; padding:2px; cursor:pointer;">
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="receiptType" data-bind="type">
+                                <option value="Invoice">Invoice</option>
+                                <option value="Receipt">Receipt</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Number</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="receiptNumber" data-bind="number" placeholder="INV-000123">
+                                <button id="btnAutoNum" class="btn-secondary" type="button">↻</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Issue Date</label>
+                            <input type="date" id="issueDate" data-bind="date">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Currency</label>
+                            <select id="currencySelect">
+                                <option value="USD|$">USD ($)</option>
+                                <option value="PKR|Rs">PKR (Rs)</option>
+                                <option value="EUR|€">EUR (€)</option>
+                                <option value="GBP|£">GBP (£)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-company" class="editor-tab-content card">
+                    <div class="flex-between" style="margin-bottom:16px;">
+                        <h2 style="margin:0; border:none;">Company Profile</h2>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Business Logo</label>
+                            <input type="file" id="logoUpload" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label>Authorized Signature</label>
+                            <input type="file" id="sigUpload" accept="image/*">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Business Name *</label>
+                        <input type="text" id="bizName" data-bind="bizName" placeholder="My Company LLC">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Email</label><input type="email" id="bizEmail" data-bind="bizEmail"></div>
+                        <div class="form-group"><label>Phone</label><input type="tel" id="bizPhone" data-bind="bizPhone"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea id="bizAddress" data-bind="bizAddress" placeholder="Company Address"></textarea>
+                    </div>
+                    <div style="display:flex; gap: 8px; margin-top: 10px;">
+                        <button id="btnQuickSaveProfile" class="btn-success" type="button">💾 Save Profile</button>
+                        <button id="btnManageProfiles" class="btn-secondary" type="button">Load Profile</button>
+                    </div>
+                </div>
+
+                <div id="sec-customer" class="editor-tab-content card">
+                    <div class="flex-between" style="margin-bottom:16px;">
+                        <h2 style="margin:0; border:none;">Customer Details</h2>
+                        <div style="display:flex; gap: 8px;">
+                            <button id="btnSaveCust" class="btn-success text-sm" type="button" title="Save Customer">💾 Save</button>
+                            <button id="btnLoadCust" class="btn-secondary text-sm" type="button">📂 Load</button>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Customer Name *</label>
+                            <input type="text" id="custName" data-bind="custName" placeholder="Client Name">
+                        </div>
+                        <div class="form-group">
+                            <label>Company</label>
+                            <input type="text" id="custCompany" data-bind="custCompany" placeholder="Client Business">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Email</label><input type="email" id="custEmail" data-bind="custEmail"></div>
+                        <div class="form-group"><label>Phone</label><input type="tel" id="custPhone" data-bind="custPhone"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea id="custAddress" data-bind="custAddress" placeholder="Client Address"></textarea>
+                    </div>
+                </div>
+
+                <div id="sec-items" class="editor-tab-content card">
+                    <h2>Tax, Discount & Items List</h2>
+                    
+                    <div class="form-row" style="background: var(--surface-hover); padding:15px; border-radius:8px; border:1px solid var(--border-color); margin-bottom:20px;">
+                        <div class="form-group">
+                            <label style="color: var(--danger-color); font-weight:bold;">Tax Rate (%)</label>
+                            <input type="number" id="taxRate" placeholder="3" min="0" step="0.01" style="border-color: var(--danger-color)">
+                        </div>
+                        <div class="form-group">
+                            <label style="color: var(--success-color); font-weight:bold;">Discount Value</label>
+                            <input type="number" id="discountVal" placeholder="0" min="0" step="0.01" style="border-color: var(--success-color)">
+                        </div>
+                        <div class="form-group">
+                            <label>Shipping / Extras</label>
+                            <input type="number" id="shippingCost" placeholder="0" min="0" step="0.01">
+                        </div>
+                    </div>
+
+                    <table class="items-editor-table">
+                        <thead><tr><th>Description</th><th style="width:20%">Qty</th><th style="width:25%">Price</th><th></th></tr></thead>
+                        <tbody id="itemsBody"></tbody>
+                    </table>
+                    <button id="btnAddItem" class="btn-secondary" style="width:100%;" type="button">+ Add Item</button>
+                </div>
+
+                <div id="sec-payment" class="editor-tab-content card">
+                    <h2>Payment Methods & Setup</h2>
+                    <div class="form-group">
+                        <label>Select Payment Method Architecture</label>
+                        <select id="paymentArchType">
+                            <option value="bank">Direct Bank Transfer</option>
+                            <option value="stripe">Stripe Gateway Account Link</option>
+                        </select>
+                    </div>
+                    <div id="bankFields">
+                        <div class="form-group">
+                            <label>Bank Setup Details</label>
+                            <textarea id="bankDetails" placeholder="Account Title:&#10;Bank Name:&#10;Account No:&#10;IBAN:&#10;Branch:"></textarea>
+                        </div>
+                    </div>
+                    <div id="stripeFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Stripe Direct Payment URL</label>
+                            <input type="url" id="payUrl" data-bind="payUrl" placeholder="https://buy.stripe.com/...">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Supported Header Info Text</label>
+                        <input type="text" id="payMethod" data-bind="payMethod" placeholder="Scan the QR code below to make a secure payment.">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Scan Code (Large Display QR)</label>
+                        <div class="qr-dropzone" onclick="document.getElementById('qrUpload').click()">
+                            <span>📁 Click to Upload Big Size QR Code Image</span>
+                            <input type="file" id="qrUpload" accept="image/*" style="display:none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="sec-extras" class="editor-tab-content card">
+                    <div class="flex-between" style="border-bottom: 1px solid var(--border-color); margin-bottom: 16px; padding-bottom: 10px;">
+                        <h2 style="margin:0; border:none;">Additional Parameters</h2>
+                        <button id="btnSaveExtras" class="btn-success text-sm" style="display:none;" type="button">💾 Save Layout</button>
+                    </div>
+                    
+                    <!-- NEW: Save Buttons placed directly on the individual textareas -->
+                    <div class="form-group">
+                        <label>Notes (Each line becomes an auto-numbered list item)</label>
+                        <button id="btnSaveNotesOnly" class="btn-success btn-inline-save" type="button">💾 Save</button>
+                        <textarea id="notes" class="greenish-box" placeholder="Thank you for choosing our services.&#10;Please check items carefully before processing."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Terms & Conditions (Each line becomes an auto-numbered list item)</label>
+                        <button id="btnSaveTermsOnly" class="btn-success btn-inline-save" type="button">💾 Save</button>
+                        <textarea id="terms" class="greenish-box" placeholder="Payment should be settled within 14 business days.&#10;Warranty claim requires printable generated copy."></textarea>
+                    </div>
+                </div>
+
+                <div id="sec-history" class="editor-tab-content card">
+                    <h2>Saved History Workspace</h2>
+                    <div id="historyLogsContainer" style="margin-top:15px; display:flex; flex-direction:column; gap:10px;">
+                        <p class="text-sm" style="color:var(--text-secondary);">No generated record logs found in browser storage history.</p>
+                    </div>
+                </div>
+
+                <div class="editor-spacer"></div>
+            </div>
+            
+            <div class="action-bar">
+                <button id="btnSaveHistory" class="btn-success" type="button">💾 Save To History</button>
+                <button id="btnPrint" class="btn-primary" type="button">Print PDF</button>
+                <button id="btnReset" class="btn-danger" type="button">Reset</button>
+            </div>
+        </section>
+
+        <!-- ================= PREVIEW SECTION ================= -->
+        <section class="preview-section">
+            <div id="receiptPaper" class="receipt-paper size-a4">
+                <div class="preview-inner">
+                    
+                    <div class="preview-header">
+                        <div class="preview-logo-area">
+                            <div class="preview-logo">
+                                <img id="prevLogo" src="" alt="Logo" style="display:none;">
+                            </div>
+                            <div class="preview-company-title">
+                                <h2 id="prevBizName">Company Name</h2>
+                                <p id="prevBizAddress">Address goes here</p>
+                            </div>
+                        </div>
+                        <div class="preview-header-right">
+                            <h1 id="prevType">Invoice</h1>
+                            <div class="inv-number"># <span id="prevNumber">INV-000123</span></div>
+                        </div>
+                    </div>
+
+                    <div class="preview-meta">
+                        <div class="preview-meta-box">
+                            <div class="meta-title">
+                                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> 
+                                From
+                            </div>
+                            <div class="meta-value-title" id="prevBizNameMeta">Business Name</div>
+                            <div class="meta-value-sub" id="prevBizAddressMeta" style="white-space: pre-wrap;"></div>
+                            <div class="meta-value-sub" id="prevBizContact" style="margin-top:4px;"></div>
+                        </div>
+                        
+                        <div class="preview-meta-box">
+                            <div class="meta-title">
+                                <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> 
+                                Bill To
+                            </div>
+                            <div class="meta-value-title" id="prevCustName">Customer Name</div>
+                            <div class="meta-value-sub" id="prevCustCompany" style="font-style:italic;"></div>
+                            <div class="meta-value-sub" id="prevCustAddress" style="white-space: pre-wrap;"></div>
+                            <div class="meta-value-sub" id="prevCustContact" style="margin-top:4px;"></div>
+                        </div>
+
+                        <div class="preview-meta-box">
+                            <div class="meta-title">
+                                <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/></svg>
+                                Date
+                            </div>
+                            <div class="meta-value-title" id="prevDate">2026-07-06</div>
+                        </div>
+                    </div>
+
+                    <table class="preview-table">
+                        <thead>
+                            <tr>
+                                <th style="width:5%; text-align:center;">#</th>
+                                <th style="width:45%">DESCRIPTION</th>
+                                <th style="width:15%; text-align:center;">QTY</th>
+                                <th style="width:15%; text-align:right;">PRICE</th>
+                                <th style="width:20%; text-align:right;">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prevItemsBody"></tbody>
+                    </table>
+
+                    <div class="totals-container">
+                        <div class="totals-box">
+                            <div class="preview-totals-row"><span>Subtotal:</span><span id="prevSubtotal">0.00</span></div>
+                            <div class="preview-totals-row" id="rowDiscount" style="display:none; color:var(--success-color);"><span>Discount:</span><span id="prevDiscount">-0.00</span></div>
+                            <div class="preview-totals-row" id="rowTax" style="display:none; color:var(--danger-color);"><span>Tax:</span><span id="prevTax">0.00</span></div>
+                            <div class="preview-totals-row" id="rowShipping" style="display:none;"><span>Shipping:</span><span id="prevShipping">0.00</span></div>
+                            <div class="preview-totals-row grand-total"><span>TOTAL DUE:</span><span id="prevTotal">0.00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Cards Area -->
+                    <div class="info-cards-grid">
+                        
+                        <!-- Card 1: Bank Details -->
+                        <div class="info-card" id="wrapPayment">
+                            <h4><svg viewBox="0 0 24 24"><path d="M4 10h3v7H4zM10.5 10h3v7h-3zM2 19h20v3H2zM17 10h3v7h-3zM12 1L2 6v2h20V6z"/></svg> BANK DETAILS</h4>
+                            <div class="bank-details-text" id="prevBankDetails" style="white-space:pre-wrap;"></div>
+                            <a id="prevPayUrl" href="#" target="_blank" style="display:none; margin-top:8px; color:var(--receipt-theme-color); font-weight:600; text-decoration:none; word-break:break-all; font-size:0.75rem;"></a>
+                            
+                            <div style="margin-top:auto; padding-top:10px;">
+                                <div style="font-size:0.65rem; color:var(--receipt-theme-color); font-weight:bold; margin-bottom:4px;">We Accept</div>
+                                <div class="payment-icons">
+                                    <span style="color:#1434CB;">VISA</span>
+                                    <span style="color:#EB001B;">Mastercard</span>
+                                    <span style="color:#003087;">PayPal</span>
+                                    <span style="color:#000;">Apple Pay</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Scan to Pay -->
+                        <div class="info-card" id="wrapQr" style="display:none;">
+                            <h4><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zm8-2h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm13-2h3v2h-3zm-3 0h2v2h-2zm3 3h3v2h-3zm-3 0h2v2h-2zm3 3h3v2h-3zm-3 0h2v2h-2zm-3-3h2v2h-2zm0-3h2v2h-2zm0 6h2v2h-2z"/></svg> SCAN TO PAY</h4>
+                            <div class="qr-wrapper">
+                                <div style="font-size:0.7rem; color:#444;" id="prevPayMethod">Scan the QR code below to make a secure payment.</div>
+                                <img id="prevQr" src="" alt="QR">
+                            </div>
+                            <div class="qr-subtext">Utilize any compatible crypto or mobile banking application framework scanner interface.</div>
+                        </div>
+
+                        <!-- Card 3: Terms -->
+                        <div class="info-card" id="wrapTerms" style="display:none;">
+                            <h4><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg> TERMS & CONDITIONS</h4>
+                            <ol id="prevTermsList" class="notes-terms-list"></ol>
+                        </div>
+                        
+                        <!-- Card 4: Signature -->
+                        <div class="info-card">
+                            <h4><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> AUTHORIZED SIGNATURE</h4>
+                            <div class="signature-area">
+                                <img id="prevSig" class="signature-img" src="" alt="Signature" style="display:none;">
+                                <div class="signature-line">Authorized Signature</div>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: Notes -->
+                        <div class="info-card" id="wrapNotes" style="display:none;">
+                            <h4><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg> NOTES</h4>
+                            <ol id="prevNotesList" class="notes-terms-list"></ol>
+                        </div>
+
+                    </div>
+                    
+                    <div class="footer-thank-you">Thank you for your business!</div>
+
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modals Structures Area -->
+    <div class="modal-overlay" id="modalProfiles"><div class="modal-content"><h2 style="display:flex; justify-content:space-between;">Saved Profiles <button class="btn-danger close-modal text-sm">✕</button></h2><div id="profilesList"></div></div></div>
+    <div class="modal-overlay" id="modalCustomers"><div class="modal-content"><h2 style="display:flex; justify-content:space-between;">Saved Customers <button class="btn-danger close-modal text-sm">✕</button></h2><div id="customersList"></div></div></div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Application State Core
+    let state = { items: [{ id: Date.now(), desc: '', qty: '', price: '' }], logoData: null, sigData: null, qrData: null };
+    let profiles = JSON.parse(localStorage.getItem('rgp_profiles') || '[]');
+    let customers = JSON.parse(localStorage.getItem('rgp_customers') || '[]');
+    let historyLogs = JSON.parse(localStorage.getItem('rgp_history') || '[]');
+
+    const els = {
+        binds: document.querySelectorAll('[data-bind]'),
+        itemsBody: document.getElementById('itemsBody'),
+        discountVal: document.getElementById('discountVal'),
+        taxRate: document.getElementById('taxRate'),
+        shippingCost: document.getElementById('shippingCost'),
+        currencySelect: document.getElementById('currencySelect'),
+        receiptPaper: document.getElementById('receiptPaper'),
+        themeColorSelect: document.getElementById('themeColorSelect'),
+        paymentArchType: document.getElementById('paymentArchType'),
+        bankFields: document.getElementById('bankFields'),
+        stripeFields: document.getElementById('stripeFields'),
+        bankDetails: document.getElementById('bankDetails'),
+        notes: document.getElementById('notes'),
+        terms: document.getElementById('terms'),
+        historyLogsContainer: document.getElementById('historyLogsContainer')
+    };
+
+    // Load Extras Configuration Defaults if Exists
+    const savedExtras = JSON.parse(localStorage.getItem('rgp_extras_defaults') || '{}');
+    if(savedExtras.notes) els.notes.value = savedExtras.notes;
+    if(savedExtras.terms) els.terms.value = savedExtras.terms;
+
+    // Custom Live Color Management Architecture
+    els.themeColorSelect.addEventListener('input', (e) => {
+        const selectedColor = e.target.value;
+        document.documentElement.style.setProperty('--receipt-theme-color', selectedColor);
+        document.documentElement.style.setProperty('--receipt-light-bg', selectedColor + '15');
+        updatePreview();
+    });
+
+    // Payment Layout Switch Logic
+    els.paymentArchType.addEventListener('change', (e) => {
+        if(e.target.value === 'bank') {
+            els.bankFields.style.display = 'block';
+            els.stripeFields.style.display = 'none';
+        } else {
+            els.bankFields.style.display = 'none';
+            els.stripeFields.style.display = 'block';
+        }
+        updatePreview();
+    });
+
+    // Save Extras Action Handlers (Specific to Buttons)
+    const saveLayoutConfig = () => {
+        const extrasObj = { notes: els.notes.value, terms: els.terms.value };
+        localStorage.setItem('rgp_extras_defaults', JSON.stringify(extrasObj));
+        alert("Saved successfully!");
+    };
+    
+    document.getElementById('btnSaveNotesOnly').addEventListener('click', saveLayoutConfig);
+    document.getElementById('btnSaveTermsOnly').addEventListener('click', saveLayoutConfig);
+
+    // Tab Interface Navigation Rules
+    document.querySelectorAll('.sticker-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.editor-tab-content').forEach(c => c.classList.remove('active'));
+            const targetBtn = e.currentTarget;
+            targetBtn.classList.add('active');
+            document.getElementById(targetBtn.getAttribute('data-target')).classList.add('active');
+        });
+    });
+
+    // Mobile Specific View Handling Layer
+    document.getElementById('tabEditor').addEventListener('click', (e) => {
+        e.target.classList.add('active'); document.getElementById('tabPreview').classList.remove('active');
+        document.querySelector('.editor-section').classList.add('active-tab');
+        document.querySelector('.preview-section').classList.remove('active-tab');
+    });
+    document.getElementById('tabPreview').addEventListener('click', (e) => {
+        e.target.classList.add('active'); document.getElementById('tabEditor').classList.remove('active');
+        document.querySelector('.preview-section').classList.add('active-tab');
+        document.querySelector('.editor-section').classList.remove('active-tab');
+        updatePreview();
+    });
+
+    const formatMoney = (amount) => {
+        const symbol = els.currencySelect.value.split('|')[1] || '';
+        return `${symbol} ${parseFloat(amount || 0).toFixed(2)}`;
+    };
+
+    const renderItemsEditor = () => {
+        els.itemsBody.innerHTML = '';
+        state.items.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="item-desc" data-idx="${index}" value="${item.desc}" placeholder="Item Description text"></td>
+                <td><input type="number" class="item-qty" data-idx="${index}" value="${item.qty}" placeholder="0" min="0"></td>
+                <td><input type="number" class="item-price" data-idx="${index}" value="${item.price}" placeholder="0" min="0"></td>
+                <td style="text-align:right;"><button class="btn-danger btn-remove-item" data-idx="${index}">✕</button></td>
+            `;
+            els.itemsBody.appendChild(tr);
+        });
+        
+        document.querySelectorAll('.item-desc').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].desc = e.target.value; updatePreview(); }));
+        document.querySelectorAll('.item-qty').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].qty = e.target.value; updatePreview(); }));
+        document.querySelectorAll('.item-price').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].price = e.target.value; updatePreview(); }));
+        document.querySelectorAll('.btn-remove-item').forEach(el => el.addEventListener('click', (e) => {
+            if(state.items.length > 1) { state.items.splice(e.target.dataset.idx, 1); renderItemsEditor(); updatePreview(); }
+        }));
+    };
+
+    document.getElementById('btnAddItem').addEventListener('click', () => {
+        state.items.push({ id: Date.now(), desc: '', qty: '', price: '' });
+        renderItemsEditor();
+    });
+
+    // Lists Ordered Auto Numbering Logic Layer
+    const renderList = (textId, listId, wrapId) => {
+        const text = document.getElementById(textId).value;
+        const wrap = document.getElementById(wrapId);
+        const list = document.getElementById(listId);
+        if (text.trim()) {
+            wrap.style.display = 'flex';
+            list.innerHTML = text.split('\n').filter(l => l.trim()).map(l => `<li>${l}</li>`).join('');
+        } else {
+            wrap.style.display = 'none';
+        }
+    };
+
+    const updatePreview = () => {
+        els.binds.forEach(el => {
+            const key = el.getAttribute('data-bind');
+            const targets = document.querySelectorAll(`[id^="prev${key.charAt(0).toUpperCase() + key.slice(1)}"]`);
+            targets.forEach(target => {
+                if(el.tagName === 'TEXTAREA') target.textContent = el.value;
+                else target.innerHTML = el.value;
+            });
+        });
+
+        document.getElementById('prevBizContact').innerHTML = [document.getElementById('bizPhone').value, document.getElementById('bizEmail').value].filter(Boolean).join(' | ');
+        document.getElementById('prevCustContact').innerHTML = [document.getElementById('custPhone').value, document.getElementById('custEmail').value].filter(Boolean).join(' | ');
+
+        renderList('notes', 'prevNotesList', 'wrapNotes');
+        renderList('terms', 'prevTermsList', 'wrapTerms');
+        
+        // Formulating Payments Engine Output Viewports
+        const payUrl = document.getElementById('payUrl').value;
+        const payMethod = document.getElementById('payMethod').value;
+        
+        // Advanced parsing for Bank Details to apply bolding like the screenshot
+        const bankLines = els.bankDetails.value.split('\n').map(line => {
+            if(line.includes(':')) {
+                const parts = line.split(':');
+                return `<strong>${parts[0]}:</strong>${parts.slice(1).join(':')}`;
+            }
+            return line;
+        });
+        
+        document.getElementById('prevPayMethod').textContent = payMethod;
+
+        if(els.paymentArchType.value === 'bank') {
+            document.getElementById('prevBankDetails').innerHTML = bankLines.join('<br>');
+            document.getElementById('prevPayUrl').style.display = 'none';
+        } else {
+            document.getElementById('prevBankDetails').textContent = '';
+            if(payUrl) {
+                document.getElementById('prevPayUrl').href = payUrl;
+                document.getElementById('prevPayUrl').textContent = "Pay Securely Via Stripe Link ↗";
+                document.getElementById('prevPayUrl').style.display = 'block';
+            } else {
+                document.getElementById('prevPayUrl').style.display = 'none';
+            }
+        }
+
+        if(state.logoData) { document.getElementById('prevLogo').src = state.logoData; document.getElementById('prevLogo').style.display = 'block'; }
+        if(state.sigData) { document.getElementById('prevSig').src = state.sigData; document.getElementById('prevSig').style.display = 'block'; }
+        
+        const qrWrap = document.getElementById('wrapQr');
+        if(state.qrData) {
+            document.getElementById('prevQr').src = state.qrData;
+            qrWrap.style.display = 'flex';
+        } else { qrWrap.style.display = 'none'; }
+
+        // Calculations & Core Math
+        const prevItemsBody = document.getElementById('prevItemsBody');
+        prevItemsBody.innerHTML = '';
+        let subtotal = 0;
+        let indexCounter = 1;
+
+        state.items.forEach((item) => {
+            let p = parseFloat(item.price) || 0;
+            let q = parseFloat(item.qty) || 0;
+            if(!item.desc && p === 0) return;
+            let t = p * q;
+            subtotal += t;
+            // Added Index Number column logic here
+            prevItemsBody.innerHTML += `<tr><td style="text-align:center; color:#555;">${indexCounter}</td><td>${item.desc}</td><td style="text-align:center;">${q||''}</td><td style="text-align:right;">${formatMoney(p)}</td><td style="text-align:right; font-weight:600;">${formatMoney(t)}</td></tr>`;
+            indexCounter++;
+        });
+
+        let d = parseFloat(els.discountVal.value) || 0;
+        let tR = parseFloat(els.taxRate.value) || 0;
+        let s = parseFloat(els.shippingCost.value) || 0;
+        
+        let taxAmt = (subtotal - d) * (tR / 100);
+        let gTotal = (subtotal - d) + taxAmt + s;
+
+        document.getElementById('prevSubtotal').textContent = formatMoney(subtotal);
+        document.getElementById('rowDiscount').style.display = d > 0 ? 'flex' : 'none';
+        if(d>0) document.getElementById('prevDiscount').textContent = `-${formatMoney(d)}`;
+        
+        document.getElementById('rowTax').style.display = taxAmt > 0 ? 'flex' : 'none';
+        if(taxAmt>0) document.getElementById('prevTax').textContent = formatMoney(taxAmt);
+        
+        document.getElementById('rowShipping').style.display = s > 0 ? 'flex' : 'none';
+        if(s>0) document.getElementById('prevShipping').textContent = formatMoney(s);
+
+        document.getElementById('prevTotal').textContent = formatMoney(gTotal);
+    };
+
+    document.querySelector('.editor-forms').addEventListener('input', updatePreview);
+    els.discountVal.addEventListener('input', updatePreview);
+    els.taxRate.addEventListener('input', updatePreview);
+    els.shippingCost.addEventListener('input', updatePreview);
+    els.currencySelect.addEventListener('change', updatePreview);
+    
+    // File Base64 Encapsulation Rules
+    const handleFile = (id, stateKey) => {
+        document.getElementById(id).addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => { state[stateKey] = ev.target.result; updatePreview(); };
+                reader.readAsDataURL(file);
+            }
+        });
+    };
+    handleFile('logoUpload', 'logoData');
+    handleFile('sigUpload', 'sigData');
+    handleFile('qrUpload', 'qrData');
+
+    document.getElementById('btnAutoNum').addEventListener('click', () => {
+        document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*1000000); updatePreview();
+    });
+    
+    document.getElementById('btnPrint').addEventListener('click', () => { updatePreview(); window.print(); });
+
+    // History Component Operations Architecture 
+    const renderHistoryLogs = () => {
+        els.historyLogsContainer.innerHTML = '';
+        if(historyLogs.length === 0) {
+            els.historyLogsContainer.innerHTML = `<p class="text-sm" style="color:var(--text-secondary);">No generated record logs found in browser storage history.</p>`;
+            return;
+        }
+        historyLogs.forEach((h, idx) => {
+            const logItem = document.createElement('div');
+            logItem.className = 'list-item';
+            logItem.innerHTML = `
+                <div>
+                    <strong>${h.custName || 'Unknown Customer'}</strong><br>
+                    <small>${h.number} | ${h.date} | Total: ${h.totalVal}</small>
+                </div>
+                <div>
+                    <button class="btn-secondary text-sm" onclick="app.loadHistoryItem(${idx})">Load</button>
+                    <button class="btn-danger text-sm" onclick="app.deleteHistoryItem(${idx})">Del</button>
+                </div>
+            `;
+            els.historyLogsContainer.appendChild(logItem);
+        });
+    };
+
+    document.getElementById('btnSaveHistory').addEventListener('click', () => {
+        const cName = document.getElementById('custName').value;
+        const invNum = document.getElementById('receiptNumber').value;
+        if(!cName) {
+            alert("Please input Customer Name before recording history snapshot.");
+            return;
+        }
+        
+        const historySnapshot = {
+            custName: cName,
+            custCompany: document.getElementById('custCompany').value,
+            custEmail: document.getElementById('custEmail').value,
+            custPhone: document.getElementById('custPhone').value,
+            custAddress: document.getElementById('custAddress').value,
+            number: invNum,
+            date: document.getElementById('issueDate').value,
+            type: document.getElementById('receiptType').value,
+            totalVal: document.getElementById('prevTotal').textContent,
+            items: JSON.parse(JSON.stringify(state.items)),
+            discount: els.discountVal.value,
+            tax: els.taxRate.value,
+            shipping: els.shippingCost.value,
+            themeColor: els.themeColorSelect.value,
+            payArch: els.paymentArchType.value,
+            bank: els.bankDetails.value,
+            stripe: document.getElementById('payUrl').value,
+            payMethodText: document.getElementById('payMethod').value
+        };
+
+        historyLogs.push(historySnapshot);
+        localStorage.setItem('rgp_history', JSON.stringify(historyLogs));
+        renderHistoryLogs();
+        alert("Save to History: Captured Successfully.");
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+        if(confirm("Reset entire form fields content?")) {
+            document.querySelectorAll('input:not([type="file"]):not(#themeColorSelect), textarea').forEach(el => el.value = '');
+            state.items = [{ id: Date.now(), desc: '', qty: '', price: '' }];
+            state.logoData = null; state.sigData = null; state.qrData = null;
+            document.getElementById('prevLogo').style.display = 'none';
+            document.getElementById('prevSig').style.display = 'none';
+            document.getElementById('issueDate').valueAsDate = new Date();
+            renderItemsEditor(); updatePreview();
+        }
+    });
+
+    const renderCustomers = () => {
+        const list = document.getElementById('customersList'); list.innerHTML = '';
+        customers.forEach((c, idx) => {
+            list.innerHTML += `<div class="list-item">
+                <div><strong>${c.name}</strong><br><small>${c.company}</small></div>
+                <div><button class="btn-secondary text-sm" onclick="app.loadCust(${idx})">Load</button> <button class="btn-danger text-sm" onclick="app.delCust(${idx})">Del</button></div>
+            </div>`;
+        });
+    };
+    document.getElementById('btnSaveCust').addEventListener('click', () => {
+        const c = { name: document.getElementById('custName').value, company: document.getElementById('custCompany').value, email: document.getElementById('custEmail').value, phone: document.getElementById('custPhone').value, address: document.getElementById('custAddress').value };
+        if(!c.name) return alert("Customer Name is required to save.");
+        customers.push(c); localStorage.setItem('rgp_customers', JSON.stringify(customers)); alert("Customer Saved!");
+    });
+    document.getElementById('btnLoadCust').addEventListener('click', () => { renderCustomers(); document.getElementById('modalCustomers').classList.add('active'); });
+
+    const renderProfiles = () => {
+        const list = document.getElementById('profilesList'); list.innerHTML = '';
+        profiles.forEach((p, idx) => {
+            list.innerHTML += `<div class="list-item">
+                <div><strong>${p.bizName}</strong></div>
+                <div><button class="btn-secondary text-sm" onclick="app.loadProfile(${idx})">Load</button> <button class="btn-danger text-sm" onclick="app.delProfile(${idx})">Del</button></div>
+            </div>`;
+        });
+    };
+    document.getElementById('btnQuickSaveProfile').addEventListener('click', () => {
+        const p = { bizName: document.getElementById('bizName').value, bizEmail: document.getElementById('bizEmail').value, bizPhone: document.getElementById('bizPhone').value, bizAddress: document.getElementById('bizAddress').value, logoData: state.logoData, sigData: state.sigData };
+        if(!p.bizName) return alert("Business Name required.");
+        profiles.push(p); localStorage.setItem('rgp_profiles', JSON.stringify(profiles)); alert("Profile Saved!");
+    });
+    document.getElementById('btnManageProfiles').addEventListener('click', () => { renderProfiles(); document.getElementById('modalProfiles').classList.add('active'); });
+
+    window.app = {
+        loadCust: (i) => {
+            const c = customers[i]; document.getElementById('custName').value = c.name || ''; document.getElementById('custCompany').value = c.company || ''; document.getElementById('custEmail').value = c.email || ''; document.getElementById('custPhone').value = c.phone || ''; document.getElementById('custAddress').value = c.address || '';
+            document.getElementById('modalCustomers').classList.remove('active'); updatePreview();
+        },
+        delCust: (i) => { customers.splice(i,1); localStorage.setItem('rgp_customers', JSON.stringify(customers)); renderCustomers(); },
+        loadProfile: (i) => {
+            const p = profiles[i]; document.getElementById('bizName').value = p.bizName || ''; document.getElementById('bizEmail').value = p.bizEmail || ''; document.getElementById('bizPhone').value = p.bizPhone || ''; document.getElementById('bizAddress').value = p.bizAddress || '';
+            if(p.logoData) state.logoData = p.logoData; if(p.sigData) state.sigData = p.sigData;
+            document.getElementById('modalProfiles').classList.remove('active'); updatePreview();
+        },
+        delProfile: (i) => { profiles.splice(i,1); localStorage.setItem('rgp_profiles', JSON.stringify(profiles)); renderProfiles(); },
+        
+        loadHistoryItem: (i) => {
+            const h = historyLogs[i];
+            document.getElementById('custName').value = h.custName || '';
+            document.getElementById('custCompany').value = h.custCompany || '';
+            document.getElementById('custEmail').value = h.custEmail || '';
+            document.getElementById('custPhone').value = h.custPhone || '';
+            document.getElementById('custAddress').value = h.custAddress || '';
+            document.getElementById('receiptNumber').value = h.number || '';
+            document.getElementById('issueDate').value = h.date || '';
+            document.getElementById('receiptType').value = h.type || 'Invoice';
+            
+            els.discountVal.value = h.discount || '';
+            els.taxRate.value = h.tax || '';
+            els.shippingCost.value = h.shipping || '';
+            
+            if(h.themeColor) {
+                els.themeColorSelect.value = h.themeColor;
+                document.documentElement.style.setProperty('--receipt-theme-color', h.themeColor);
+                document.documentElement.style.setProperty('--receipt-light-bg', h.themeColor + '15');
+            }
+            if(h.payArch) els.paymentArchType.value = h.payArch;
+            if(h.bank) els.bankDetails.value = h.bank;
+            if(h.stripe) document.getElementById('payUrl').value = h.stripe;
+            if(h.payMethodText) document.getElementById('payMethod').value = h.payMethodText;
+            
+            els.paymentArchType.dispatchEvent(new Event('change'));
+            state.items = h.items || [{ id: Date.now(), desc: '', qty: '', price: '' }];
+            
+            renderItemsEditor();
+            updatePreview();
+            alert("Selected Invoice Log Restored to Active Canvas Workspace!");
+        },
+        deleteHistoryItem: (i) => {
+            if(confirm("Do you want to delete this recorded document history log instance securely?")) {
+                historyLogs.splice(i, 1);
+                localStorage.setItem('rgp_history', JSON.stringify(historyLogs));
+                renderHistoryLogs();
+            }
+        }
+    };
+    document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', (e) => e.target.closest('.modal-overlay').classList.remove('active')));
+
+    // Initialization Initializer Orchestrations
+    document.getElementById('issueDate').valueAsDate = new Date();
+    document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*100000);
+    renderItemsEditor();
+    renderHistoryLogs();
+    updatePreview();
+});
+</script>
+</body>
+</html>
