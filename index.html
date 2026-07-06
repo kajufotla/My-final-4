@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-X-P-R-T | Enterprise Invoice & Receipt Builder</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* ==========================================================================
+           CSS VARIABLES & RESET
+           ========================================================================== */
+        :root {
+            --bg-color: #f3f4f6;
+            --surface-color: #ffffff;
+            --surface-hover: #f9fafb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --primary-color: #1a56db; 
+            --primary-hover: #1e429f;
+            --danger-color: #ef4444;
+            --success-color: #10b981;
+            --border-color: #e5e7eb;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --transition: all 0.2s ease-in-out;
+            --focus-ring: 0 0 0 3px rgba(26, 86, 219, 0.2);
+            
+            --receipt-theme-color: #1a56db; 
+            --receipt-light-bg: #eff6ff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-primary); line-height: 1.5; transition: var(--transition); display: flex; flex-direction: column; height: 100vh;}
+
+        /* ==========================================================================
+           SaaS NAVIGATION & DASHBOARD MATRIX
+           ========================================================================== */
+        .top-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface-color); padding: 12px 24px;
+            border-bottom: 1px solid var(--border-color); z-index: 50; flex-shrink: 0;
+        }
+        .nav-brand { font-weight: 800; font-size: 1.25rem; color: var(--primary-color); display: flex; align-items: center; gap: 8px; letter-spacing: 1px;}
+        
+        .dashboard-matrix {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+            padding: 16px 24px; background: var(--surface-color); border-bottom: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm); flex-shrink: 0;
+        }
+        .stat-card {
+            background: var(--bg-color); padding: 16px; border-radius: var(--radius-md);
+            border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 4px;
+        }
+        .stat-card span { font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.5px;}
+        .stat-card h3 { font-size: 1.5rem; font-weight: 800; color: var(--primary-color); margin: 0;}
+
+        /* ==========================================================================
+           LAYOUT & EDITOR
+           ========================================================================== */
+        .app-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+        .editor-section { flex: 1; max-width: 700px; display: flex; background: var(--surface-color); border-right: 1px solid var(--border-color); z-index: 10; overflow: hidden;}
+        .editor-sidebar { width: 140px; background: var(--bg-color); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; overflow-y: auto; padding: 10px 0;}
+        .editor-forms { flex: 1; padding: 24px; overflow-y: auto; scroll-behavior: smooth; padding-bottom: 100px; }
+        
+        .sticker-btn {
+            background: transparent; border: none; padding: 12px 10px; margin: 4px 10px; text-align: center;
+            border-radius: var(--radius-md); font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);
+            cursor: pointer; transition: var(--transition); display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .sticker-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+        .sticker-btn.active { background: var(--surface-hover); color: var(--primary-color); box-shadow: var(--shadow-sm); border-bottom: 2px solid var(--primary-color); }
+
+        .editor-tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .editor-tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .preview-section { flex: 1.5; overflow-y: auto; padding: 40px; display: flex; justify-content: center; align-items: flex-start; background: var(--bg-color); }
+
+        /* Form Components */
+        h2 { font-size: 1.15rem; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; font-weight: 600; color: var(--text-primary);}
+        .form-group { margin-bottom: 16px; position: relative; }
+        .form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+        .form-row .form-group { flex: 1; margin-bottom: 0; }
+        label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; font-size: 0.95rem; background: var(--bg-color); border: 1px solid var(--border-color);
+            border-radius: var(--radius-md); color: var(--text-primary); transition: var(--transition); font-family: inherit;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: var(--focus-ring); background: var(--surface-color); }
+        textarea { resize: vertical; min-height: 80px; }
+        .card { background: var(--surface-color); padding: 5px; margin-bottom: 24px; }
+        
+        .persistence-bar { display: flex; gap: 8px; margin-bottom: 16px; background: var(--surface-hover); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color); }
+
+        /* Buttons */
+        button { cursor: pointer; font-weight: 500; border-radius: var(--radius-md); border: none; padding: 10px 16px; font-size: 0.9rem; transition: var(--transition); display: inline-flex; align-items: center; justify-content: center; gap: 6px;}
+        .btn-primary { background: var(--primary-color); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        .btn-secondary { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .btn-secondary:hover { background: var(--surface-hover); }
+        .btn-success { background: var(--success-color); color: #fff; }
+        
+        .action-bar {
+            position: absolute; bottom: 0; left: 0; width: 700px;
+            background: var(--surface-color); border-top: 1px solid var(--border-color);
+            padding: 16px 24px; display: flex; gap: 12px; z-index: 20;
+        }
+
+        .items-editor-table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-bottom: 16px; }
+        .items-editor-table th { text-align: left; font-size: 0.8rem; color: var(--text-secondary); padding: 0 8px; text-transform: uppercase;}
+        .bank-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* ==========================================================================
+           PDF / PREVIEW STYLES (A4 Optimized)
+           ========================================================================== */
+        .receipt-paper { 
+            background: #ffffff; color: #333333; box-shadow: var(--shadow-md); margin: 0 auto; 
+            position: relative; overflow: hidden; display: flex; flex-direction: column; 
+            width: 210mm; min-height: 297mm; font-size: 0.85rem; 
+        }
+        
+        .preview-inner { padding: 40px; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .preview-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+        .preview-logo { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-right: 20px;}
+        .preview-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .preview-header-right { text-align: right; }
+        .preview-header-right h1 { color: var(--receipt-theme-color); font-size: 2.5rem; margin-bottom: 4px; font-weight: 900; text-transform: uppercase; line-height: 1; }
+
+        .preview-meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .preview-meta-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; background: #f8fafc; }
+        .meta-title { font-weight: 700; font-size: 0.8rem; margin-bottom: 10px; text-transform: uppercase; color: #1e293b; }
+        .meta-value-title { font-weight: 700; font-size: 0.95rem; color: var(--receipt-theme-color); margin-bottom: 4px; }
+
+        .preview-table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
+        .preview-table th { background: var(--receipt-theme-color); color: #fff; padding: 12px 16px; text-align: left; font-size: 0.8rem; text-transform: uppercase; }
+        .preview-table td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+        
+        .totals-container { display: flex; justify-content: flex-end; }
+        .totals-box { width: 340px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+        .preview-totals-row { display: flex; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid #f1f5f9; }
+        .preview-totals-row.grand-total { font-weight: 800; font-size: 1.15rem; background: var(--receipt-theme-color); color: #fff; }
+        
+        .preview-footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .info-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+        .info-card h4 { font-size: 0.8rem; font-weight: 700; color: var(--receipt-theme-color); text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px;}
+        
+        .card-bank { border-top: 4px solid var(--receipt-theme-color); }
+        .card-qr { border-top: 4px solid #64748b; text-align: center; }
+        .qr-wrapper img { max-width: 90px; margin-top: 10px;}
+
+        /* Upgraded Signature/Notes Placement */
+        .footer-bottom-area {
+            display: flex; flex-direction: row; justify-content: space-between; align-items: flex-end;
+            margin-top: auto; padding-top: 20px; gap: 40px;
+        }
+        .card-notes {
+            flex: 1; border-left: 4px solid var(--receipt-theme-color); background: #f8fafc;
+            border: 1px solid #e2e8f0; border-left-width: 4px; border-radius: 8px; padding: 16px;
+        }
+        .card-notes h4 { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 10px;}
+        .signature-section { width: 280px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+        .signature-img { width: 100%; max-width: 200px; height: 80px; object-fit: contain; margin-bottom: 8px; }
+        .signature-line { width: 100%; border-top: 2px solid #0f172a; padding-top: 8px; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; }
+
+        /* ==========================================================================
+           LEGAL FOOTER
+           ========================================================================== */
+        .app-footer {
+            background: var(--surface-color); border-top: 1px solid var(--border-color);
+            padding: 16px 24px; display: flex; justify-content: center; gap: 24px;
+            flex-shrink: 0; font-size: 0.85rem; z-index: 50;
+        }
+        .app-footer a { color: var(--text-secondary); text-decoration: none; font-weight: 500; transition: var(--transition);}
+        .app-footer a:hover { color: var(--primary-color); }
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <div class="nav-brand">E-X-P-R-T <span style="font-size: 0.7rem; background: var(--receipt-light-bg); padding: 2px 6px; border-radius: 4px;">PRO</span></div>
+</nav>
+
+<div class="dashboard-matrix">
+    <div class="stat-card"><span>Total Invoices Generated</span><h3 id="dashTotal">0</h3></div>
+    <div class="stat-card"><span>Gross Invoiced Revenue</span><h3 id="dashRevenue">$0.00</h3></div>
+    <div class="stat-card"><span>Last Invoice Activity</span><h3 id="dashActivity">N/A</h3></div>
+</div>
+
+<div class="app-container">
+    <section class="editor-section">
+        <div class="editor-sidebar">
+            <button class="sticker-btn active" data-target="sec-doc">📄 Document</button>
+            <button class="sticker-btn" data-target="sec-company">🏢 Company</button>
+            <button class="sticker-btn" data-target="sec-customer">👤 Customer</button>
+            <button class="sticker-btn" data-target="sec-items">🛍️ Items & Tax</button>
+            <button class="sticker-btn" data-target="sec-payment">💳 Payment</button>
+            <button class="sticker-btn" data-target="sec-extras">📝 Extras</button>
+        </div>
+
+        <div class="editor-forms" id="mainForm">
+            <div id="sec-doc" class="editor-tab-content active card">
+                <h2>Document Settings</h2>
+                <div class="form-row">
+                    <div class="form-group"><label>Print Theme Color</label><input type="color" id="themeColorSelect" value="#1a56db" style="height:45px; padding:2px;"></div>
+                    <div class="form-group"><label>Type</label><select id="receiptType" data-bind="type"><option value="Invoice">Invoice</option><option value="Receipt">Receipt</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Number</label><input type="text" id="receiptNumber" data-bind="number" placeholder="INV-000123"></div>
+                    <div class="form-group"><label>Issue Date</label><input type="date" id="issueDate" data-bind="date"></div>
+                </div>
+                <div class="form-group"><label>Currency</label><select id="currencySelect"><option value="USD|$">USD ($)</option><option value="EUR|€">EUR (€)</option><option value="GBP|£">GBP (£)</option></select></div>
+            </div>
+
+            <div id="sec-company" class="editor-tab-content card">
+                <h2>Company Profile</h2>
+                <div class="form-row">
+                    <div class="form-group"><label>Business Logo</label><input type="file" id="logoUpload" accept="image/*"></div>
+                    <div class="form-group"><label>Authorized Signature</label><input type="file" id="sigUpload" accept="image/*"></div>
+                </div>
+                <div class="form-group"><label>Business Name</label><input type="text" id="bizName" data-bind="bizName" placeholder="My Company LLC"></div>
+                <div class="form-group"><label>Address</label><textarea id="bizAddress" data-bind="bizAddress"></textarea></div>
+            </div>
+
+            <div id="sec-customer" class="editor-tab-content card">
+                <h2>Customer Details</h2>
+                <div class="persistence-bar">
+                    <select id="profileDropdown" style="flex:1;"><option value="">-- Load Saved Customer Profile --</option></select>
+                    <button id="btnSaveProfile" class="btn-secondary">💾 Save Profile</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Customer Name</label><input type="text" id="custName" data-bind="custName" placeholder="Client Name"></div>
+                    <div class="form-group"><label>Company</label><input type="text" id="custCompany" data-bind="custCompany"></div>
+                </div>
+                <div class="form-group"><label>Address</label><textarea id="custAddress" data-bind="custAddress"></textarea></div>
+            </div>
+
+            <div id="sec-items" class="editor-tab-content card">
+                <h2>Items List</h2>
+                <div class="form-row">
+                    <div class="form-group"><label>Tax Rate (%)</label><input type="number" id="taxRate" placeholder="0" min="0"></div>
+                    <div class="form-group"><label>Discount</label><input type="number" id="discountVal" placeholder="0" min="0"></div>
+                </div>
+                <table class="items-editor-table">
+                    <thead><tr><th>Description</th><th style="width:20%">Qty</th><th style="width:25%">Price</th><th></th></tr></thead>
+                    <tbody id="itemsBody"></tbody>
+                </table>
+                <button id="btnAddItem" class="btn-secondary" style="width:100%;">+ Add Item</button>
+            </div>
+
+            <div id="sec-payment" class="editor-tab-content card">
+                <h2>Payment Gateways</h2>
+                <div class="persistence-bar">
+                    <select id="merchantDropdown" style="flex:1;"><option value="">-- Load Merchant Setup --</option></select>
+                    <button id="btnSaveMerchant" class="btn-secondary">💾 Save Setup</button>
+                </div>
+                <div class="form-group">
+                    <label>Select Gateway</label>
+                    <select id="paymentArchType">
+                        <option value="bank">Direct Bank Wire</option>
+                        <option value="stripe">Stripe Checkout Link</option>
+                        <option value="paypal">PayPal Business/Me</option>
+                        <option value="payoneer">Payoneer Corporate</option>
+                        <option value="wise">Wise / Revolut Tag</option>
+                    </select>
+                </div>
+                
+                <div id="bankFields">
+                    <div class="form-group">
+                        <label>Bank Setup Details</label>
+                        <div class="bank-grid">
+                            <input type="text" id="bankAccTitle" placeholder="Account Title">
+                            <input type="text" id="bankName" placeholder="Bank Name">
+                            <input type="text" id="bankIban" placeholder="IBAN">
+                            <input type="text" id="bankSwift" placeholder="SWIFT/BIC">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="urlFields" style="display:none;">
+                    <div class="form-group">
+                        <label>Payment Link / Tag</label>
+                        <input type="url" id="payUrl" placeholder="https://...">
+                    </div>
+                </div>
+
+                <div class="form-group"><label>Payment Scan Code (QR)</label><input type="file" id="qrUpload" accept="image/*"></div>
+            </div>
+
+            <div id="sec-extras" class="editor-tab-content card">
+                <h2>Additional Parameters</h2>
+                <div class="form-group"><label>Notes</label><textarea id="notes" placeholder="Thank you for your business."></textarea></div>
+                <div class="form-group"><label>Terms & Conditions</label><textarea id="terms" placeholder="Payment due in 14 days."></textarea></div>
+            </div>
+        </div>
+        
+        <div class="action-bar">
+            <button id="btnSaveHistory" class="btn-success">💾 Save to Dashboard</button>
+            <button id="btnPrint" class="btn-primary" style="flex:1;">🖨️ Generate PDF</button>
+        </div>
+    </section>
+
+    <section class="preview-section">
+        <div id="receiptPaper" class="receipt-paper">
+            <div class="preview-inner">
+                
+                <div class="preview-header">
+                    <div style="display:flex;">
+                        <div class="preview-logo"><img id="prevLogo" src="" alt="Logo" style="display:none;"></div>
+                        <div>
+                            <h2 id="prevBizName" style="margin:0; font-size:1.75rem; border:none; text-transform:uppercase;">Company Name</h2>
+                            <div id="prevBizAddress" style="white-space:pre-wrap; color:#64748b; margin-top:4px;"></div>
+                        </div>
+                    </div>
+                    <div class="preview-header-right">
+                        <h1 id="prevType">Invoice</h1>
+                        <div style="font-weight:700; color:#475569;"># <span id="prevNumber">INV-000123</span></div>
+                    </div>
+                </div>
+
+                <div class="preview-meta">
+                    <div class="preview-meta-box">
+                        <div class="meta-title">Bill To</div>
+                        <div class="meta-value-title" id="prevCustName">Customer Name</div>
+                        <div id="prevCustCompany" style="font-style:italic; margin-bottom:2px;"></div>
+                        <div id="prevCustAddress" style="white-space:pre-wrap; color:#475569;"></div>
+                    </div>
+                    <div class="preview-meta-box">
+                        <div class="meta-title">Date Issued</div>
+                        <div class="meta-value-title" id="prevDate">2026-07-06</div>
+                    </div>
+                </div>
+
+                <table class="preview-table">
+                    <thead><tr><th style="width:6%">#</th><th style="width:44%">DESCRIPTION</th><th style="width:15%; text-align:center;">QTY</th><th style="width:15%; text-align:right;">PRICE</th><th style="width:20%; text-align:right;">AMOUNT</th></tr></thead>
+                    <tbody id="prevItemsBody"></tbody>
+                </table>
+
+                <div class="totals-container">
+                    <div class="totals-box">
+                        <div class="preview-totals-row"><span>Subtotal:</span><span id="prevSubtotal">0.00</span></div>
+                        <div class="preview-totals-row" id="rowDiscount" style="display:none; color:var(--success-color);"><span>Discount:</span><span id="prevDiscount">-0.00</span></div>
+                        <div class="preview-totals-row" id="rowTax" style="display:none; color:var(--danger-color);"><span>Tax:</span><span id="prevTax">0.00</span></div>
+                        <div class="preview-totals-row grand-total"><span>TOTAL DUE:</span><span id="prevTotal">0.00</span></div>
+                    </div>
+                </div>
+
+                <div class="preview-footer-grid">
+                    <div class="info-card card-bank" id="wrapPayment">
+                        <h4>Payment Details</h4>
+                        <div id="prevBankDetails" style="font-size:0.8rem; line-height:1.6;"></div>
+                        <a id="prevPayUrl" href="#" target="_blank" style="display:none; margin-top:8px; font-weight:600; text-decoration:none; font-size:0.75rem;"></a>
+                    </div>
+                    <div class="info-card card-qr" id="wrapQr" style="display:none;">
+                        <h4>Scan To Pay</h4>
+                        <div class="qr-wrapper"><img id="prevQr" src="" alt="QR"></div>
+                    </div>
+                    <div class="info-card" id="wrapTerms" style="display:none;">
+                        <h4>Terms & Conditions</h4>
+                        <div id="prevTermsList" style="font-size:0.8rem; color:#475569; white-space:pre-wrap;"></div>
+                    </div>
+                </div>
+
+                <div class="footer-bottom-area">
+                    <div class="card-notes" id="wrapNotes" style="display:none;">
+                        <h4>Notes</h4>
+                        <div id="prevNotesList" style="font-size:0.8rem; color:#475569; white-space:pre-wrap;"></div>
+                    </div>
+                    <div class="signature-section">
+                        <img id="prevSig" class="signature-img" src="" alt="Signature" style="display:none;">
+                        <div class="signature-line">Authorized Signature</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+</div>
+
+<footer class="app-footer">
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">Disclaimer</a>
+    <a href="#">About Us</a>
+    <a href="#">Contact Us</a>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let state = { items: [{ id: Date.now(), desc: '', qty: '', price: '' }], logoData: null, sigData: null, qrData: null };
+    
+    // Core Elements mapping
+    const els = {
+        currencySelect: document.getElementById('currencySelect'),
+        themeColorSelect: document.getElementById('themeColorSelect'),
+        paymentArchType: document.getElementById('paymentArchType'),
+        bankFields: document.getElementById('bankFields'),
+        urlFields: document.getElementById('urlFields'),
+        notes: document.getElementById('notes'),
+        terms: document.getElementById('terms')
+    };
+
+    // ==========================================
+    // 1. Dashboard Matrix Logic
+    // ==========================================
+    const updateDashboard = () => {
+        const historyLogs = JSON.parse(localStorage.getItem('rgp_history') || '[]');
+        document.getElementById('dashTotal').textContent = historyLogs.length;
+        
+        let revenue = 0;
+        historyLogs.forEach(log => {
+            if(log.totalVal) {
+                // Strip currency symbols to sum globally
+                revenue += parseFloat(log.totalVal.replace(/[^0-9.-]+/g,"")) || 0;
+            }
+        });
+        document.getElementById('dashRevenue').textContent = `$${revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        document.getElementById('dashActivity').textContent = historyLogs.length > 0 ? historyLogs[historyLogs.length - 1].date : 'N/A';
+    };
+    updateDashboard();
+
+    // ==========================================
+    // 2. Real-Time Global Event Binding
+    // ==========================================
+    document.querySelector('.editor-forms').addEventListener('input', (e) => {
+        updatePreview();
+    });
+    
+    // Sidebar Navigation
+    document.querySelectorAll('.sticker-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.editor-tab-content').forEach(c => c.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            document.getElementById(e.currentTarget.getAttribute('data-target')).classList.add('active');
+        });
+    });
+
+    els.themeColorSelect.addEventListener('input', (e) => {
+        document.documentElement.style.setProperty('--receipt-theme-color', e.target.value);
+        updatePreview();
+    });
+
+    // ==========================================
+    // 3. Multi-Merchant Gateway Architecture
+    // ==========================================
+    els.paymentArchType.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if(val === 'bank') {
+            els.bankFields.style.display = 'block'; els.urlFields.style.display = 'none';
+        } else {
+            els.bankFields.style.display = 'none'; els.urlFields.style.display = 'block';
+            let placeholder = 'https://...';
+            if(val === 'stripe') placeholder = 'https://buy.stripe.com/...';
+            if(val === 'paypal') placeholder = 'https://paypal.me/...';
+            if(val === 'payoneer') placeholder = 'Payoneer Tag / Link';
+            if(val === 'wise') placeholder = 'Wise Transfer Tag';
+            document.getElementById('payUrl').placeholder = placeholder;
+        }
+        updatePreview();
+    });
+
+    // ==========================================
+    // 4. Persistence Engine (Profiles & Setup)
+    // ==========================================
+    const loadSelectOpts = (selectId, storageKey) => {
+        const sel = document.getElementById(selectId);
+        const data = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        sel.innerHTML = `<option value="">-- Select Saved Profile --</option>`;
+        Object.keys(data).forEach(k => {
+            sel.innerHTML += `<option value="${k}">${k}</option>`;
+        });
+    };
+    
+    // Customer
+    loadSelectOpts('profileDropdown', 'rgp_saved_customers');
+    document.getElementById('btnSaveProfile').addEventListener('click', () => {
+        const name = document.getElementById('custName').value;
+        if(!name) return alert('Customer Name required to save profile.');
+        const profiles = JSON.parse(localStorage.getItem('rgp_saved_customers') || '{}');
+        profiles[name] = { company: document.getElementById('custCompany').value, address: document.getElementById('custAddress').value };
+        localStorage.setItem('rgp_saved_customers', JSON.stringify(profiles));
+        loadSelectOpts('profileDropdown', 'rgp_saved_customers');
+        document.getElementById('profileDropdown').value = name;
+        alert('Profile saved!');
+    });
+    document.getElementById('profileDropdown').addEventListener('change', (e) => {
+        const profiles = JSON.parse(localStorage.getItem('rgp_saved_customers') || '{}');
+        const p = profiles[e.target.value];
+        if(p) {
+            document.getElementById('custName').value = e.target.value;
+            document.getElementById('custCompany').value = p.company;
+            document.getElementById('custAddress').value = p.address;
+            updatePreview();
+        }
+    });
+
+    // Merchant
+    loadSelectOpts('merchantDropdown', 'rgp_saved_merchants');
+    document.getElementById('btnSaveMerchant').addEventListener('click', () => {
+        const configName = prompt("Name this Payment Setup (e.g., 'Primary USD Bank'):");
+        if(!configName) return;
+        const merch = JSON.parse(localStorage.getItem('rgp_saved_merchants') || '{}');
+        merch[configName] = {
+            type: els.paymentArchType.value,
+            title: document.getElementById('bankAccTitle').value, name: document.getElementById('bankName').value,
+            iban: document.getElementById('bankIban').value, swift: document.getElementById('bankSwift').value,
+            url: document.getElementById('payUrl').value
+        };
+        localStorage.setItem('rgp_saved_merchants', JSON.stringify(merch));
+        loadSelectOpts('merchantDropdown', 'rgp_saved_merchants');
+        alert('Merchant Gateway setup saved!');
+    });
+    document.getElementById('merchantDropdown').addEventListener('change', (e) => {
+        const merch = JSON.parse(localStorage.getItem('rgp_saved_merchants') || '{}');
+        const m = merch[e.target.value];
+        if(m) {
+            els.paymentArchType.value = m.type;
+            document.getElementById('bankAccTitle').value = m.title;
+            document.getElementById('bankName').value = m.name;
+            document.getElementById('bankIban').value = m.iban;
+            document.getElementById('bankSwift').value = m.swift;
+            document.getElementById('payUrl').value = m.url;
+            els.paymentArchType.dispatchEvent(new Event('change'));
+            updatePreview();
+        }
+    });
+
+    // ==========================================
+    // Items Matrix
+    // ==========================================
+    const renderItemsEditor = () => {
+        const tbody = document.getElementById('itemsBody');
+        tbody.innerHTML = '';
+        state.items.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="item-desc" data-idx="${index}" value="${item.desc}"></td>
+                <td><input type="number" class="item-qty" data-idx="${index}" value="${item.qty}"></td>
+                <td><input type="number" class="item-price" data-idx="${index}" value="${item.price}"></td>
+                <td style="text-align:right;"><button class="btn-danger btn-remove-item" data-idx="${index}">✕</button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.querySelectorAll('.item-desc').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].desc = e.target.value; updatePreview(); }));
+        document.querySelectorAll('.item-qty').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].qty = e.target.value; updatePreview(); }));
+        document.querySelectorAll('.item-price').forEach(el => el.addEventListener('input', (e) => { state.items[e.target.dataset.idx].price = e.target.value; updatePreview(); }));
+        document.querySelectorAll('.btn-remove-item').forEach(el => el.addEventListener('click', (e) => {
+            if(state.items.length > 1) { state.items.splice(e.target.dataset.idx, 1); renderItemsEditor(); updatePreview(); }
+        }));
+    };
+    document.getElementById('btnAddItem').addEventListener('click', () => { state.items.push({ id: Date.now(), desc: '', qty: '', price: '' }); renderItemsEditor(); });
+
+    // ==========================================
+    // Rendering Engine (Fixing Duplications)
+    // ==========================================
+    const formatMoney = (amount) => {
+        const symbol = els.currencySelect.value.split('|')[1] || '';
+        return `${symbol}${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(amount || 0)}`;
+    };
+
+    const updatePreview = () => {
+        // Standard binds
+        document.querySelectorAll('[data-bind]').forEach(el => {
+            const key = el.getAttribute('data-bind');
+            const target = document.getElementById(`prev${key.charAt(0).toUpperCase() + key.slice(1)}`);
+            if(target) target.textContent = el.value;
+        });
+
+        // Bugfix: Clean innerHTML string assignment prevents array duplications
+        const nVal = els.notes.value.trim();
+        const tVal = els.terms.value.trim();
+        document.getElementById('wrapNotes').style.display = nVal ? 'block' : 'none';
+        document.getElementById('prevNotesList').textContent = nVal;
+        
+        document.getElementById('wrapTerms').style.display = tVal ? 'block' : 'none';
+        document.getElementById('prevTermsList').textContent = tVal;
+
+        // Payment Gateway Mapping
+        if(els.paymentArchType.value === 'bank') {
+            let bStr = '';
+            const t = document.getElementById('bankAccTitle').value;
+            const n = document.getElementById('bankName').value;
+            const i = document.getElementById('bankIban').value;
+            const s = document.getElementById('bankSwift').value;
+            if(t) bStr += `<strong>Account Title:</strong> ${t}<br>`;
+            if(n) bStr += `<strong>Bank:</strong> ${n}<br>`;
+            if(i) bStr += `<strong>IBAN:</strong> ${i}<br>`;
+            if(s) bStr += `<strong>SWIFT:</strong> ${s}<br>`;
+            document.getElementById('prevBankDetails').innerHTML = bStr;
+            document.getElementById('prevPayUrl').style.display = 'none';
+        } else {
+            document.getElementById('prevBankDetails').innerHTML = '';
+            const url = document.getElementById('payUrl').value;
+            const a = document.getElementById('prevPayUrl');
+            if(url) {
+                a.href = url;
+                a.textContent = `Pay Securely via ${els.paymentArchType.options[els.paymentArchType.selectedIndex].text} ↗`;
+                a.style.display = 'block';
+                a.style.color = document.getElementById('themeColorSelect').value;
+            } else {
+                a.style.display = 'none';
+            }
+        }
+
+        // Images
+        if(state.logoData) { document.getElementById('prevLogo').src = state.logoData; document.getElementById('prevLogo').style.display = 'block'; }
+        if(state.sigData) { document.getElementById('prevSig').src = state.sigData; document.getElementById('prevSig').style.display = 'block'; }
+        
+        const qrWrap = document.getElementById('wrapQr');
+        if(state.qrData) { document.getElementById('prevQr').src = state.qrData; qrWrap.style.display = 'block'; } else { qrWrap.style.display = 'none'; }
+
+        // Math & Items
+        const prevItemsBody = document.getElementById('prevItemsBody');
+        prevItemsBody.innerHTML = '';
+        let subtotal = 0, indexCounter = 1;
+
+        state.items.forEach((item) => {
+            let p = parseFloat(item.price) || 0, q = parseFloat(item.qty) || 0;
+            if(!item.desc && p === 0) return;
+            let t = p * q; subtotal += t;
+            prevItemsBody.innerHTML += `<tr><td style="text-align:center;">${indexCounter}</td><td>${item.desc}</td><td style="text-align:center;">${q||''}</td><td style="text-align:right;">${formatMoney(p)}</td><td style="text-align:right; font-weight:700;">${formatMoney(t)}</td></tr>`;
+            indexCounter++;
+        });
+
+        let d = parseFloat(document.getElementById('discountVal').value) || 0;
+        let tR = parseFloat(document.getElementById('taxRate').value) || 0;
+        let taxAmt = (subtotal - d) * (tR / 100);
+        let gTotal = (subtotal - d) + taxAmt;
+
+        document.getElementById('prevSubtotal').textContent = formatMoney(subtotal);
+        
+        const rowD = document.getElementById('rowDiscount');
+        rowD.style.display = d > 0 ? 'flex' : 'none';
+        if(d>0) document.getElementById('prevDiscount').textContent = `-${formatMoney(d)}`;
+        
+        const rowT = document.getElementById('rowTax');
+        rowT.style.display = taxAmt > 0 ? 'flex' : 'none';
+        if(taxAmt>0) document.getElementById('prevTax').textContent = formatMoney(taxAmt);
+        
+        document.getElementById('prevTotal').textContent = formatMoney(gTotal);
+    };
+
+    // File Handling
+    const handleFile = (id, stateKey) => {
+        document.getElementById(id).addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if(file) {
+                const reader = new FileReader();
+                reader.onload = (ev) => { state[stateKey] = ev.target.result; updatePreview(); };
+                reader.readAsDataURL(file);
+            }
+        });
+    };
+    handleFile('logoUpload', 'logoData'); handleFile('sigUpload', 'sigData'); handleFile('qrUpload', 'qrData');
+
+    // ==========================================
+    // 5. html2pdf Optimization Override
+    // ==========================================
+    document.getElementById('btnPrint').addEventListener('click', () => {
+        updatePreview();
+        const element = document.getElementById('receiptPaper');
+        const filename = `Invoice_${document.getElementById('receiptNumber').value}.pdf`;
+        
+        const opt = {
+            margin:       0,
+            filename:     filename,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true }, // Double pixel ratio for print clarity
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Pipe to engine
+        html2pdf().set(opt).from(element).save();
+    });
+
+    document.getElementById('btnSaveHistory').addEventListener('click', () => {
+        const historyLogs = JSON.parse(localStorage.getItem('rgp_history') || '[]');
+        historyLogs.push({
+            date: new Date().toISOString().split('T')[0],
+            totalVal: document.getElementById('prevTotal').textContent
+        });
+        localStorage.setItem('rgp_history', JSON.stringify(historyLogs));
+        updateDashboard();
+        alert('Saved to Workspace Dashboard.');
+    });
+
+    // Init
+    document.getElementById('issueDate').valueAsDate = new Date(); 
+    document.getElementById('receiptNumber').value = 'INV-' + Math.floor(Math.random()*100000);
+    renderItemsEditor(); 
+    updatePreview();
+});
+</script>
+</body>
+</html>
