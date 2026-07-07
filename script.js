@@ -109,9 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ==========================================
-  // DEBOUNCE PERFORMANCE UTILITY
-  // ==========================================
   const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {
@@ -209,7 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let itemMemory = safeParseJSON(localStorage.getItem('rgp_item_memory'), []);
   let notesLibrary = safeParseJSON(localStorage.getItem('rgp_notes_library'), []);
 
-  // Secure Storage Automated Self-Backup Execution
   const executeStorageBackup = () => {
     try {
       const coreArchive = { historyLogs, savedClients, savedPayments, itemMemory, notesLibrary };
@@ -219,14 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ==========================================
-  // AUTO-INCREMENT INVOICE SEQUENCE GENERATOR
-  // ==========================================
   const generateAutoNumber = () => {
     const year = new Date().getFullYear();
     let currentSequence = parseInt(localStorage.getItem('rgp_invoice_seq_counter') || '0', 10);
     
-    // Scan existing historical configurations to guarantee uniqueness constraints
     if (historyLogs.length > 0) {
       historyLogs.forEach(h => {
         if (h.number && h.number.startsWith(`INV-${year}-`)) {
@@ -258,7 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body.rgp-dark-mode .sticker-btn, body.rgp-dark-mode .btn-secondary { background-color: #333 !important; color: #fff !important; border-color: #555 !important; }
         #receiptPaper { background-color: #fff !important; color: #000 !important; position: relative !important; min-height: 297mm; box-sizing: border-box; }
         #prevWatermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 80px; font-weight: 900; opacity: 0.1; pointer-events: none; display: none; z-index: 1000; text-transform: uppercase; white-space: nowrap; }
-        #prevInvoiceStatus { position: absolute; top: 20px; right: 20px; font-weight: bold; font-size: 16px; text-transform: uppercase; border: 2px solid; padding: 4px 8px; border-radius: 4px; display: none; }
+        #prevInvoiceStatus { display: none !important; } /* Hidden entirely per requirement */
         #prevDueDate { font-size: 14px; color: #555; margin-top: 5px; display: none; }
         .template-modern { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .template-classic { font-family: 'Georgia', Times, serif; }
@@ -270,6 +262,18 @@ document.addEventListener('DOMContentLoaded', () => {
   injectStyles();
 
   const injectUIElements = () => {
+    // Inject dynamic payment methods to HTML dropdown
+    if(cache.paymentArchType) {
+      cache.paymentArchType.innerHTML = `
+        <option value="bank">Local Bank Transfer</option>
+        <option value="stripe">Stripe</option>
+        <option value="paypal">PayPal</option>
+        <option value="payoneer">Payoneer</option>
+        <option value="wise">Wise</option>
+        <option value="crypto">Cryptocurrency</option>
+      `;
+    }
+
     const issueDateEl = cache.issueDate;
     if (issueDateEl && !document.getElementById('dueDate')) {
       issueDateEl.insertAdjacentHTML('afterend', `
@@ -383,9 +387,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   injectUIElements();
 
-  // ==========================================
-  // EXTENSIONAL AUTO-DUE DATE LOGIC
-  // ==========================================
   const calculateCalculatedDueDate = () => {
     const offsetSelect = document.getElementById('dueDateOffset');
     if (!offsetSelect || offsetSelect.value === 'manual' || !cache.issueDate.value) return;
@@ -402,9 +403,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('dueDateOffset')?.addEventListener('change', calculateCalculatedDueDate);
   cache.issueDate.addEventListener('change', calculateCalculatedDueDate);
 
-  // ==========================================
-  // REUSABLE NOTES LIBRARY ENGINE
-  // ==========================================
   const renderNotesLibraryDropdown = () => {
     const dbox = document.getElementById('libraryTargetSelect');
     if (!dbox) return;
@@ -460,9 +458,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   renderNotesLibraryDropdown();
 
-  // ==========================================
-  // AUTO DRAFT SAVE & CRACH RECOVERY ENGINE
-  // ==========================================
   const captureCurrentFormSnapshot = () => {
     return {
       bizName: cache.bizName.value,
@@ -536,7 +531,6 @@ document.addEventListener('DOMContentLoaded', () => {
     executeStorageBackup();
   }, 700);
 
-  // Recovery Execution Hook
   (() => {
     const recoveryTarget = localStorage.getItem('rgp_autosave_draft_cache');
     if (recoveryTarget) {
@@ -544,7 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsed = JSON.parse(recoveryTarget);
         if (parsed && Object.keys(parsed).length > 0) {
           applySnapshotToForm(parsed);
-          console.log("Unsaved progress recovered successfully from local application cache.");
         }
       } catch (err) {
         console.warn("Auto-recovery sequence fallback triggered due to data anomalies.", err);
@@ -552,9 +545,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })();
 
-  // ==========================================
-  // SMART VALIDATION ENGINE
-  // ==========================================
   const runSmartFieldValidation = (field, validationType) => {
     const value = field.value.trim();
     let isFieldValid = true;
@@ -614,9 +604,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return formsValid;
   };
 
-  // ==========================================
-  // INVOICE ADVANCED LAYOUT TEMPLATE ENGINE
-  // ==========================================
   document.getElementById('templateSelector')?.addEventListener('change', (e) => {
     const selectedTemplate = e.target.value;
     state.activeTemplate = selectedTemplate;
@@ -627,9 +614,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePreview();
   });
 
-  // ==========================================
-  // SYSTEM AUTOMATIC QR CODE IMPLEMENTATION
-  // ==========================================
   const updateDynamicPaymentQRCode = () => {
     const rawStripeUrl = cache.payUrl.value.trim();
     if (rawStripeUrl && !state.qrData) {
@@ -643,9 +627,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ==========================================
-  // STATISTICS & HISTORICAL DATA METRICS
-  // ==========================================
   const recomputeDashboardMetrics = () => {
     const metrics = { count: 0, paid: 0, pending: 0, overdue: 0, draft: 0, revenue: 0 };
     metrics.count = historyLogs.length;
@@ -675,9 +656,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ==========================================
-  // ADVANCED HISTORY MULTI-TERM FILTER ENGINE
-  // ==========================================
   const renderHistoryLogs = (filterKeyword = "") => {
     cache.historyLogsContainer.innerHTML = '';
     cache.dashTotalClients.textContent = savedClients.length;
@@ -717,9 +695,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   cache.searchHistory.addEventListener('input', (e) => renderHistoryLogs(e.target.value));
 
-  // ==========================================
-  // COMPANY PROFILE PERSISTENCE ENGINE
-  // ==========================================
   const savedProfile = safeParseJSON(localStorage.getItem('rgp_company_profile'), {});
   if(savedProfile.bizName) cache.bizName.value = savedProfile.bizName;
   if(savedProfile.bizEmail) cache.bizEmail.value = savedProfile.bizEmail;
@@ -738,9 +713,6 @@ document.addEventListener('DOMContentLoaded', () => {
     alert("Company Profile Configuration Saved!");
   });
 
-  // ==========================================
-  // THEME SWITCHER & DROPDOWN HANDLING
-  // ==========================================
   const savedLang = localStorage.getItem('rgp_lang') || 'en';
   document.getElementById('langSwitcher').value = savedLang;
   setLanguage(savedLang);
@@ -757,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Duplicate Action Flow Hook Configuration
   const btnDup = document.getElementById('btnDuplicate');
   if (btnDup) {
     btnDup.addEventListener('click', () => {
@@ -795,7 +766,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnSaveNotesOnly').addEventListener('click', saveLayoutConfig);
   document.getElementById('btnSaveTermsOnly').addEventListener('click', saveLayoutConfig);
 
-  // Dynamic Content Generation Engine Block Hook
   const autoNumberLineHook = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -833,7 +803,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   bankInputs.forEach(input => input.addEventListener('input', updateBankString));
 
-  // Efficient Global Native Delegation Event Architecture Hook Configuration
   cache.mainForm.addEventListener('input', (e) => {
     if(['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
       updatePreview();
@@ -890,9 +859,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   updateItemMemoryList();
 
-  // ==========================================
-  // ADVANCED ITEM STRUCTURAL MODIFICATION CONTROLS
-  // ==========================================
   window.itemActions = {
     duplicate(id) {
       const idx = state.items.findIndex(i => i.id === id);
@@ -947,7 +913,6 @@ document.addEventListener('DOMContentLoaded', () => {
       cache.itemsBody.appendChild(tr);
     });
 
-    // Dynamic Binding Configuration Hooks Setup
     document.querySelectorAll('.item-desc').forEach(el => el.addEventListener('input', (e) => {
       const id = parseInt(e.target.dataset.id, 10);
       const item = state.items.find(i => i.id === id);
@@ -1005,9 +970,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ==========================================
-  // ENGINE MASTER LIVE PREVIEW RENDERER
-  // ==========================================
   const updatePreview = () => {
     document.querySelectorAll('[data-bind]').forEach(el => {
       const key = el.getAttribute('data-bind');
@@ -1043,7 +1005,14 @@ document.addEventListener('DOMContentLoaded', () => {
       cache.prevBankDetails.textContent = '';
       if(payUrl) {
         cache.prevPayUrl.href = payUrl;
-        cache.prevPayUrl.textContent = "Pay Securely Via Stripe Link ↗";
+        const paymentNames = {
+          'stripe': 'Pay Securely Via Stripe ↗',
+          'paypal': 'Pay Securely Via PayPal ↗',
+          'payoneer': 'Pay Securely Via Payoneer ↗',
+          'wise': 'Pay Securely Via Wise ↗',
+          'crypto': 'Pay via Crypto Wallet ↗'
+        };
+        cache.prevPayUrl.textContent = paymentNames[cache.paymentArchType.value] || "Click here to Pay ↗";
         cache.prevPayUrl.style.display = 'block';
       } else {
         cache.prevPayUrl.style.display = 'none';
@@ -1097,10 +1066,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (cache.invoiceStatus && cache.prevInvoiceStatus) {
-      cache.prevInvoiceStatus.textContent = cache.invoiceStatus.value;
-      cache.prevInvoiceStatus.style.display = 'block';
-      cache.prevInvoiceStatus.style.borderColor = cache.invoiceStatus.value === 'Paid' ? 'green' : (cache.invoiceStatus.value === 'Overdue' ? 'red' : (cache.invoiceStatus.value === 'Pending' ? 'orange' : 'gray'));
-      cache.prevInvoiceStatus.style.color = cache.prevInvoiceStatus.style.borderColor;
+      cache.prevInvoiceStatus.style.display = 'none'; // Forced hide so it doesn't show in PDF top corner
     }
 
     let prevDue = document.getElementById('prevDueDate');
@@ -1118,9 +1084,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ==========================================
-  // ATTACHED MEDIA BINARY FILE VALIDATIONS
-  // ==========================================
   const handleFile = (id, stateKey) => {
     document.getElementById(id).addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -1153,23 +1116,25 @@ document.addEventListener('DOMContentLoaded', () => {
       const element = cache.receiptPaper;
       const fileName = cache.receiptNumber.value + '.pdf';
       
-      let scaleVal = 2; // Default High Quality setup
+      let scaleVal = 2; 
       if(cache.pdfQuality) {
         if(cache.pdfQuality.value === 'standard') scaleVal = 1.5;
         else if(cache.pdfQuality.value === 'print') scaleVal = 4;
       }
 
+      // Updated configuration for auto-pagination and fix clipping issues
       const opt = {
-        margin: 0,
+        margin: [10, 10, 10, 10], 
         filename: fileName,
         image: { type: 'jpeg', quality: 1.0 },
+        pagebreak: { mode: ['css', 'legacy'], avoid: 'tr' }, // added multipage auto-adjustment
         html2canvas: { 
           scale: scaleVal, 
           useCORS: true, 
           scrollY: 0,
           scrollX: 0,
           letterRendering: true,
-          windowWidth: element.offsetWidth
+          windowWidth: element.scrollWidth // fixed clipping
         },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
       };
@@ -1187,9 +1152,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ==========================================
-  // WORKSPACE CRM CLIENT & ACCOUNT LOGISTICS
-  // ==========================================
   const updateDropdowns = () => {
     const cDrop = document.getElementById('savedClientsDropdown');
     cDrop.innerHTML = '<option value="">-- Manual Entry --</option>';
@@ -1268,9 +1230,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ==========================================
-  // FORM COMPOSER RESET MECHANICS
-  // ==========================================
   document.getElementById('btnReset').addEventListener('click', () => {
     if(confirm("Reset entire active structural composer layout sheet?")) {
       document.querySelectorAll('input:not([type="file"]):not(#themeColorSelect), textarea').forEach(el => el.value = '');
@@ -1288,9 +1247,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ==========================================
-  // CORE HISTORY CONTROLLER ACTIONS
-  // ==========================================
   document.getElementById('btnSaveHistory').addEventListener('click', () => {
     if(!validateForm()) return;
     historyLogs.push({
@@ -1377,9 +1333,6 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsText(file);
   });
 
-  // ==========================================
-  // SYSTEM ENGINE SHORTCUT INTERCEPT KEYBOARD MATRIX
-  // ==========================================
   window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
       const key = e.key.toLowerCase();
@@ -1406,9 +1359,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ==========================================
-  // HOST SCOPE SYSTEM INTERFACE REGISTRATION
-  // ==========================================
   window.app = {
     loadHistoryItem: (i) => {
       const h = historyLogs[i];
@@ -1481,14 +1431,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.querySelectorAll('.close-modal').forEach(b => b.addEventListener('click', (e) => e.target.closest('.modal-overlay').classList.remove('active')));
 
-  // Initialize Template Selection View Restorations
   if (state.activeTemplate !== 'default') {
     const tSelector = document.getElementById('templateSelector');
     if (tSelector) tSelector.value = state.activeTemplate;
     cache.receiptPaper.classList.add(`template-${state.activeTemplate}`);
   }
 
-  // Initial Runtime Boots
   renderItemsEditor();
   renderHistoryLogs();
   updatePreview();
